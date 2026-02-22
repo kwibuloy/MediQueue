@@ -1,0 +1,13 @@
+.footer {
+  margin-top: auto;
+  padding: 20px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+  text-align: center;
+}
+
+.text {
+  font-size: 13px;
+  color: var(--ink-muted);
+  margin: 0;
+}

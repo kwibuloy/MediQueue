@@ -1,0 +1,163 @@
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 24px 100px;
+}
+
+.hero {
+  padding: 72px 0 48px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 48px;
+  position: relative;
+}
+
+.hero::after {
+  content: '✚';
+  position: absolute;
+  right: 0;
+  top: 48px;
+  font-size: 120px;
+  color: var(--border);
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.tag {
+  display: inline-block;
+  background: var(--accent-glow);
+  border: 1px solid rgba(232, 200, 109, 0.25);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: var(--radius-full);
+  margin-bottom: 22px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(44px, 8vw, 66px);
+  line-height: 1.05;
+  color: var(--ink);
+  margin-bottom: 18px;
+}
+
+.intro {
+  font-size: 16px;
+  color: var(--ink-muted);
+  line-height: 1.7;
+  max-width: 520px;
+}
+
+/* Stats section */
+.stats {
+  margin-bottom: 56px;
+}
+
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.sectionSub {
+  font-size: 15px;
+  color: var(--ink-muted);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.statGrid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+}
+
+.statCard {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.statValue {
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.statLabel {
+  font-size: 13px;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+/* Role choice */
+.choose {
+  margin-bottom: 48px;
+}
+
+.roleCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.roleCard {
+  display: block;
+  text-decoration: none;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  transition: all var(--transition);
+  color: inherit;
+}
+
+.roleCard:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.roleIcon {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.roleTitle {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+
+.roleDesc {
+  font-size: 14px;
+  color: var(--ink-muted);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.roleCta {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+@media (max-width: 480px) {
+  .page { padding: 0 16px 80px; }
+  .hero { padding: 48px 0 40px; }
+  .hero::after { display: none; }
+}

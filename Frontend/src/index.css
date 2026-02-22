@@ -1,0 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;1,400;1,600&family=Epilogue:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg:           #0e0f11;
+  --bg2:          #161719;
+  --bg3:          #1f2024;
+  --border:       #2a2c30;
+  --ink:          #f0eeea;
+  --ink-muted:    #7a7c82;
+  --ink-dim:      #454850;
+  --accent:       #e8c86d;
+  --accent-dark:  #c9a94a;
+  --accent-glow:  rgba(232, 200, 109, 0.15);
+  --red:          #e05a52;
+  --red-light:    rgba(224, 90, 82, 0.12);
+  --green:        #52b788;
+  --green-light:  rgba(82, 183, 136, 0.12);
+  --radius:       14px;
+  --radius-sm:    9px;
+  --radius-full:  100px;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body:    'Epilogue', sans-serif;
+  --shadow:       0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg:    0 12px 48px rgba(0, 0, 0, 0.6);
+  --transition:   0.2s ease;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+#root {
+  min-height: 100vh;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font-family: var(--font-body); cursor: pointer; }
+input, select { font-family: var(--font-body); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
