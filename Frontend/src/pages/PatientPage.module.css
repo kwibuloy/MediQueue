@@ -114,6 +114,16 @@
   padding: 16px 0;
 }
 
+.searchInput {
+  width: 100%;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+
 @media (max-width: 480px) {
   .page { padding: 0 16px 80px; }
   .hero { padding: 48px 0 40px; }

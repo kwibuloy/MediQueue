@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { getPatientStatus } from '../services/api';
+import React, { useEffect, useState } from 'react';
+import { getAccessToken, getPatientStatus } from '../services/api';
 import styles from './StatusChecker.module.css';
 
 const STATUS_LABELS = {
@@ -9,43 +9,61 @@ const STATUS_LABELS = {
 };
 
 export default function StatusChecker() {
-  const [patientId, setPatientId] = useState('');
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [note, setNote] = useState('');
+  const hasToken = !!getAccessToken();
 
-  const handleCheck = async () => {
-    if (!patientId.trim()) return;
-    setLoading(true);
-    setData(null);
-    setError('');
+  const handleCheck = async ({ background = false } = {}) => {
+    if (!hasToken) return;
+
+    if (background) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+      setError('');
+    }
+
     try {
-      const result = await getPatientStatus(patientId.trim());
+      const result = await getPatientStatus();
       setData(result);
+      setError('');
     } catch (err) {
-      setError(err.message);
+      if (!background) setError(err.message);
     } finally {
-      setLoading(false);
+      if (background) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
+
+  useEffect(() => {
+    if (!hasToken) return undefined;
+    handleCheck();
+    const interval = setInterval(() => handleCheck({ background: true }), 7000);
+    return () => clearInterval(interval);
+  }, [hasToken]);
+
+  const estimatedWait =
+    data && data.status === 'waiting' && typeof data.position_in_queue === 'number'
+      ? `${Math.max((data.position_in_queue - 1) * 10, 0)} mins`
+      : data?.status === 'called'
+        ? 'Now'
+        : 'N/A';
 
   return (
     <div className={styles.card}>
       <div className={styles.formGroup}>
-        <label className={styles.label}>Your Patient ID</label>
+        <label className={styles.label}>My Queue Status</label>
         <div className={styles.row}>
-          <input
-            className={styles.input}
-            type="text"
-            placeholder="Enter your Patient ID"
-            value={patientId}
-            onChange={(e) => setPatientId(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleCheck()}
-          />
           <button
             className={styles.btn}
-            onClick={handleCheck}
-            disabled={loading || !patientId.trim()}
+            onClick={() => handleCheck()}
+            disabled={loading}
           >
             {loading ? '…' : 'Check'}
           </button>
@@ -73,6 +91,18 @@ export default function StatusChecker() {
                 {STATUS_LABELS[data.status] ?? data.status}
               </span>
             </div>
+            <div className={styles.stat}>
+              <span className={styles.statLabel}>Est. Wait</span>
+              <span className={styles.statValue}>{estimatedWait}</span>
+            </div>
+          </div>
+          <div className={styles.row}>
+            <button
+              className={styles.btn}
+              onClick={() => setNote('Cancel queue action requires a backend endpoint and will be wired once available.')}
+            >
+              Cancel my spot
+            </button>
           </div>
           {data.status === 'called' && (
             <div className={styles.calledAlert}>
@@ -81,6 +111,10 @@ export default function StatusChecker() {
           )}
         </div>
       )}
+      <p className={styles.liveTag}>
+        Live updates active (auto-refresh every 7s){refreshing ? ' • syncing…' : ''}.
+      </p>
+      {note && <p className={styles.error}>{note}</p>}
     </div>
   );
 }

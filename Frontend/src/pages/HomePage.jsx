@@ -1,65 +1,107 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getAccessToken, getUserRole } from '../services/api';
 import styles from './HomePage.module.css';
 
 export default function HomePage() {
+  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+  const goToRole = (role) => {
+    const token = getAccessToken();
+    const savedRole = getUserRole();
+    if (token && (!savedRole || savedRole === role)) {
+      navigate(role === 'patient' ? '/patient' : '/admin');
+      return;
+    }
+    navigate(role === 'patient' ? '/patient/auth' : '/admin/auth');
+  };
+
   return (
     <main className={styles.page}>
       <section className={styles.hero}>
-        <span className={styles.tag}>Welcome</span>
-        <h1 className={styles.title}>MediQueue</h1>
+        <span className={styles.tag}>Mediqueue</span>
+        <h1 className={styles.title}>Skip the wait. Queue smarter. Get seen faster.</h1>
         <p className={styles.intro}>
-          MediQueue is a digital queue management system for clinics and hospitals.
-          It lets patients join a doctor’s queue online and track their position in real time,
-          while staff manage queues, call the next patient, and keep operations smooth.
+          Mediqueue helps patients and clinics manage appointments through a real-time digital queue,
+          reducing waiting-room congestion and making queue movement visible for everyone.
         </p>
+        <button className={styles.getStartedBtn} onClick={() => setOpen(true)}>Get Started</button>
       </section>
 
-      <section className={styles.stats}>
-        <h2 className={styles.sectionTitle}>Why convenience matters</h2>
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>How It Works</h2>
+        <div className={styles.steps}>
+          <article className={styles.step}>
+            <span className={styles.stepNum}>1</span>
+            <h3>Choose a doctor</h3>
+            <p>Browse available doctors and find the right match by specialty or clinic.</p>
+          </article>
+          <article className={styles.step}>
+            <span className={styles.stepNum}>2</span>
+            <h3>Join the queue</h3>
+            <p>Join with one click after sign in. No manual patient ID entry needed.</p>
+          </article>
+          <article className={styles.step}>
+            <span className={styles.stepNum}>3</span>
+            <h3>Get notified</h3>
+            <p>Track your live queue status and be ready when your turn is near.</p>
+          </article>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Key Features</h2>
         <p className={styles.sectionSub}>
-          Digital queues reduce wait anxiety and improve both patient and staff experience.
+          Designed for faster patient flow and clearer clinic operations.
         </p>
-        <ul className={styles.statGrid}>
-          <li className={styles.statCard}>
-            <span className={styles.statValue}>~40%</span>
-            <span className={styles.statLabel}>faster perceived check-in when patients see their position</span>
+        <ul className={styles.featureGrid}>
+          <li className={styles.featureCard}>
+            <span className={styles.featureTitle}>Real-time queue tracking</span>
+            <span className={styles.featureLabel}>See queue movement as patients are called.</span>
           </li>
-          <li className={styles.statCard}>
-            <span className={styles.statValue}>Less crowding</span>
-            <span className={styles.statLabel}>patients wait with clarity instead of crowding the counter</span>
+          <li className={styles.featureCard}>
+            <span className={styles.featureTitle}>No physical waiting</span>
+            <span className={styles.featureLabel}>Patients stay informed without crowding the front desk.</span>
           </li>
-          <li className={styles.statCard}>
-            <span className={styles.statValue}>Better flow</span>
-            <span className={styles.statLabel}>receptionists and admins manage one clear queue per doctor</span>
+          <li className={styles.featureCard}>
+            <span className={styles.featureTitle}>Live queue status</span>
+            <span className={styles.featureLabel}>Know your position, status, and estimated waiting time.</span>
+          </li>
+          <li className={styles.featureCard}>
+            <span className={styles.featureTitle}>Doctor-focused admin view</span>
+            <span className={styles.featureLabel}>Each admin manages one doctor queue with clear controls.</span>
           </li>
         </ul>
       </section>
 
-      <section className={styles.choose}>
-        <h2 className={styles.sectionTitle}>How are you using MediQueue?</h2>
-        <p className={styles.sectionSub}>
-          Choose your role to continue.
-        </p>
-        <div className={styles.roleCards}>
-          <Link to="/patient" className={styles.roleCard}>
-            <span className={styles.roleIcon}>👤</span>
-            <h3 className={styles.roleTitle}>I’m a patient</h3>
-            <p className={styles.roleDesc}>
-              Join a doctor’s queue and monitor your status — see your position and when you’re called.
-            </p>
-            <span className={styles.roleCta}>Go to patient view →</span>
-          </Link>
-          <Link to="/admin" className={styles.roleCard}>
-            <span className={styles.roleIcon}>🖥️</span>
-            <h3 className={styles.roleTitle}>I’m an admin / receptionist</h3>
-            <p className={styles.roleDesc}>
-              Access the admin dashboard to manage the doctor’s queue, operations, and patient flow.
-            </p>
-            <span className={styles.roleCta}>Go to admin dashboard →</span>
-          </Link>
+      {open && (
+        <div className={styles.modalOverlay} onClick={(e) => e.target === e.currentTarget && setOpen(false)}>
+          <div className={styles.modal}>
+            <h3>Select your role</h3>
+            <p>Choose where to continue.</p>
+            <div className={styles.modalActions}>
+              <button
+                className={styles.roleBtn}
+                onClick={() => {
+                  setOpen(false);
+                  goToRole('patient');
+                }}
+              >
+                🧑‍⚕️ Patient
+              </button>
+              <button
+                className={styles.roleBtn}
+                onClick={() => {
+                  setOpen(false);
+                  goToRole('admin');
+                }}
+              >
+                🛠️ Admin
+              </button>
+            </div>
+          </div>
         </div>
-      </section>
+      )}
     </main>
   );
 }
