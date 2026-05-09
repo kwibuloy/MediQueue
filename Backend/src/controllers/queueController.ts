@@ -15,12 +15,19 @@ export const joinQueue = async (req: Request, res: Response) => {
     try {
         const {doctorId } = req.body;
         const patientId = (req as any).user.id;
+
+        console.log("Doctor ID: ", doctorId);
+        console.log("Patient ID: ", patientId);
         
         if (!patientId || !doctorId) {
             return res.status(400).json({ error: 'Patient ID and doctor ID are required' });
         }
 
-        const checkSql = `SELECT id FROM queues WHERE patient_id = $1 AND doctor_id = $2 AND status = 'waiting'`;
+        const checkSql = `SELECT id FROM queues 
+                          WHERE patient_id = $1 
+                          AND doctor_id = $2 
+                          AND status = 'waiting'
+                          AND created_at::date = CURRENT_DATE;`;
         const existing = await query(checkSql, [patientId, doctorId]);
 
         if (existing.rows.length > 0) {
@@ -112,6 +119,7 @@ export const callNextPatient = async (req: Request, res: Response) => {
 
 export const getPatientStatus = async (req: Request, res: Response) => {
     const patientId = (req as any).user.id;
+    console.log('getPatientStatus called for patientId:', patientId);
 
     try {
         const sql = `
@@ -131,6 +139,7 @@ export const getPatientStatus = async (req: Request, res: Response) => {
         `;
 
         const result = await query(sql, [patientId]);
+        console.log('Query result:', result.rows);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'No queue entry found for this patient today' });
