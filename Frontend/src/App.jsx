@@ -7,6 +7,9 @@ import PatientPage from './pages/PatientPage';
 import AdminPage from './pages/AdminPage';
 import PatientAuthPage from './pages/PatientAuthPage';
 import AdminAuthPage from './pages/AdminAuthPage';
+import LoginPage from './pages/LoginPage';
+import NotAuthorizedPage from './pages/NotAuthorizedPage';
+import ProtectedRoute from './components/ProtectedRoute';
 
 export default function App() {
   return (
@@ -16,10 +19,26 @@ export default function App() {
         <main style={{ flex: 1 }}>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/not-authorized" element={<NotAuthorizedPage />} />
           <Route path="/patient/auth" element={<PatientAuthPage />} />
-          <Route path="/patient" element={<PatientPage />} />
+          <Route
+            path="/patient"
+            element={
+              <ProtectedRoute requiredRole="patient">
+                <PatientPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/admin/auth" element={<AdminAuthPage />} />
-          <Route path="/admin" element={<AdminPage />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminPage />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
         </main>
         <Footer />

@@ -30,7 +30,6 @@ export const login = async (req: Request, res: Response) => {
         password
     });
 
-    console.log((req as any).userRole);
 
     if(error) return res.status(401).json({error: "Invalid email or password."});
 

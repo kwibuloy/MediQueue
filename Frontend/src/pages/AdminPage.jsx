@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { getDoctors, getAdminQueue, callNextPatient } from '../services/api';
+import { getDoctors, getAdminQueue, callNextPatient, startSession, completeSession } from '../services/api';
+import { supabase } from '../services/supabaseClient';
 import QueueList from '../components/QueueList';
 import styles from './AdminPage.module.css';
 
@@ -24,11 +25,12 @@ export default function AdminPage() {
       .catch(() => setError('Failed to load doctors.'));
   }, [hasToken]);
 
-  const loadQueue = useCallback(async () => {
+  // loadQueue supports a silent option so realtime updates don't show a global loading overlay
+  const loadQueue = useCallback(async (opts = { silent: false }) => {
     if (!selectedDoctorId) return;
-    setLoadingQueue(true);
+    if (!opts.silent) setLoadingQueue(true);
     setError('');
-    setCalledTicket(null);
+    if (!opts.silent) setCalledTicket(null);
     try {
       const data = await getAdminQueue(selectedDoctorId);
       setQueue(data);
@@ -36,15 +38,58 @@ export default function AdminPage() {
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoadingQueue(false);
+      if (!opts.silent) setLoadingQueue(false);
     }
   }, [selectedDoctorId]);
 
   useEffect(() => {
     if (!selectedDoctorId || !hasToken) return;
+
+    // initial fetch (show loading spinner)
     loadQueue();
-    const interval = setInterval(loadQueue, 7000);
-    return () => clearInterval(interval);
+
+    // throttled/scheduled fetch helper so we don't hammer the API during bursts
+    const scheduledRef = { timer: null, last: 0 };
+    const scheduleFetch = () => {
+      const now = Date.now();
+      const elapsed = now - scheduledRef.last;
+      const minInterval = 2000; // 2 seconds
+      if (elapsed >= minInterval) {
+        loadQueue({ silent: true });
+        scheduledRef.last = Date.now();
+      } else {
+        if (scheduledRef.timer) clearTimeout(scheduledRef.timer);
+        scheduledRef.timer = setTimeout(() => {
+          loadQueue({ silent: true });
+          scheduledRef.last = Date.now();
+          scheduledRef.timer = null;
+        }, minInterval - elapsed);
+      }
+    };
+
+    // subscribe to Supabase realtime changes for this doctor's queue
+    const channel = supabase
+      .channel(`public:queues:doctor:${selectedDoctorId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'queues', filter: `doctor_id=eq.${selectedDoctorId}` },
+        (payload) => {
+          // silent/throttled refresh — update state in background without showing global loading
+          scheduleFetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      // cleanup subscription and any pending timer
+      try {
+        supabase.removeChannel(channel);
+      } catch (e) {
+        // fallback if removeChannel isn't available
+        if (channel && typeof channel.unsubscribe === 'function') channel.unsubscribe();
+      }
+      if (scheduledRef.timer) clearTimeout(scheduledRef.timer);
+    };
   }, [hasToken, loadQueue, selectedDoctorId]);
 
   useEffect(() => {
@@ -64,6 +109,30 @@ export default function AdminPage() {
       setError(err.message);
     } finally {
       setCallingNext(false);
+    }
+  };
+
+  const handleStartSession = async (queueId) => {
+    try {
+      setError('');
+      await startSession(queueId);
+      // refresh queue to reflect status change
+      const data = await getAdminQueue(selectedDoctorId);
+      setQueue(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleCompleteSession = async (queueId) => {
+    try {
+      setError('');
+      await completeSession(queueId);
+      // refresh queue to reflect status change
+      const data = await getAdminQueue(selectedDoctorId);
+      setQueue(data);
+    } catch (err) {
+      setError(err.message);
     }
   };
 
@@ -161,8 +230,14 @@ export default function AdminPage() {
 
           {loadingQueue ? (
             <div className={styles.loadingQueue}>Loading queue…</div>
+          ) : queue.length === 0 ? (
+            <div className={styles.empty}>No patients in line</div>
           ) : (
-            <QueueList queue={queue} />
+            <QueueList 
+              queue={queue}
+              onStartSession={handleStartSession}
+              onCompleteSession={handleCompleteSession}
+            />
           )}
         </section>
       )}

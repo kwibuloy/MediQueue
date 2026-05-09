@@ -63,6 +63,41 @@
   margin-top: 2px;
 }
 
+.status {
+  font-size: 11px;
+  color: var(--ink-muted);
+  margin-top: 4px;
+  text-transform: capitalize;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btnSmall {
+  background: var(--accent-glow);
+  border: 1px solid rgba(232,200,109,0.25);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btnSmall:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: rgba(232,200,109,0.15);
+}
+
+.btnSmall:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .pos {
   font-size: 12px;
   color: var(--ink-muted);

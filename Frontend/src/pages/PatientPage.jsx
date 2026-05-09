@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { clearAccessToken, getAccessToken, getDoctors } from '../services/api';
+import { clearAccessToken, getAccessToken, getDoctors, getQueueHistory, cancelQueue } from '../services/api';
 import DoctorCard from '../components/DoctorCard';
 import JoinQueueModal from '../components/JoinQueueModal';
 import StatusChecker from '../components/StatusChecker';
@@ -11,6 +11,9 @@ export default function PatientPage() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [history, setHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState('');
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const hasToken = !!getAccessToken();
 
@@ -28,6 +31,22 @@ export default function PatientPage() {
   }, []);
 
   useEffect(() => { fetchDoctors(); }, [fetchDoctors]);
+  useEffect(() => {
+    if (!hasToken) return;
+    const fetchHistory = async () => {
+      setLoadingHistory(true);
+      setHistoryError('');
+      try {
+        const data = await getQueueHistory();
+        setHistory(data || []);
+      } catch (err) {
+        setHistoryError('Could not load history.');
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+    fetchHistory();
+  }, [hasToken]);
   useEffect(() => {
     if (!hasToken) return;
     const interval = setInterval(fetchDoctors, 12000);
@@ -130,9 +149,36 @@ export default function PatientPage() {
 
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Queue History</h2>
-          <p className={styles.errorMsg}>
-            Queue history endpoint is not available yet in the current backend. This section is ready for API integration.
-          </p>
+          {loadingHistory ? (
+            <div>Loading history…</div>
+          ) : historyError ? (
+            <p className={styles.errorMsg}>{historyError}</p>
+          ) : history.length === 0 ? (
+            <p className={styles.queueCount}>No past visits found.</p>
+          ) : (
+            <div>
+              {history.map((item) => {
+                const roomRaw = item.doctor_room ? String(item.doctor_room) : '';
+                const roomDisplay = roomRaw ? (roomRaw.trim().toLowerCase().startsWith('room') ? roomRaw : `Room ${roomRaw}`) : '';
+                const dateStr = item.created_at ? new Date(item.created_at).toLocaleString() : '';
+                const status = item.status || '';
+                return (
+                  <div key={item.id} className={styles.historyItem}>
+                    <div className={styles.historyMeta}>
+                      <div className={styles.historyDoctor}>
+                        <strong>{item.doctor_name || 'Doctor'}</strong>
+                        {roomDisplay && <span className={styles.historyRoom}> — {roomDisplay}</span>}
+                      </div>
+                      <div className={styles.historyDate}>{dateStr}</div>
+                    </div>
+                    <div className={`${styles.historyStatus} ${styles[`status_${status}`] || ''}`}>
+                      {status}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
         </>
       )}

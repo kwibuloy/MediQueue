@@ -129,3 +129,44 @@
   .hero { padding: 48px 0 40px; }
   .hero::after { display: none; }
 }
+
+/* History styles */
+.historyItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+}
+.historyMeta {
+  display: flex;
+  flex-direction: column;
+}
+.historyDoctor {
+  font-weight: 600;
+  color: var(--ink);
+}
+.historyRoom {
+  color: var(--ink-muted);
+  font-weight: 500;
+  margin-left: 6px;
+}
+.historyDate {
+  color: var(--ink-muted);
+  font-size: 13px;
+  margin-top: 6px;
+}
+.historyStatus {
+  font-weight: 700;
+  text-transform: capitalize;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+.status_waiting { background: rgba(15, 124, 255, 0.08); color: #0f7cff; border: 1px solid rgba(15,124,255,0.15);} 
+.status_called { background: rgba(255, 193, 7, 0.08); color: #ffc107; border: 1px solid rgba(255,193,7,0.15);} 
+.status_cancelled { background: rgba(244, 67, 54, 0.08); color: #f44336; border: 1px solid rgba(244,67,54,0.15);} 
+.status_done { background: rgba(76, 175, 80, 0.08); color: #4caf50; border: 1px solid rgba(76,175,80,0.15);} 

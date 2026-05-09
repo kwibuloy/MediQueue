@@ -1,3 +1,5 @@
+import { supabase } from './supabaseClient';
+
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const ACCESS_TOKEN_KEY = 'access_token';
 const USER_ROLE_KEY = 'user_role';
@@ -43,15 +45,39 @@ async function apiFetch(path, options = {}) {
 export const getDoctors = () => apiFetch('/doctors');
 
 export const login = async (email, password) => {
+  clearAccessToken();
+  await supabase.auth.signOut({ scope: 'local' });
+
   const data = await apiFetch('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
   const token = data?.session?.access_token;
-  const role = data?.session?.user?.user_metadata?.role;
-  setAccessToken(token);
-  setUserRole(role);
-  return data;
+  const refreshToken = data?.session?.refresh_token;
+
+  if (token) {
+    setAccessToken(token);
+  }
+
+  if (token && refreshToken) {
+    await supabase.auth.setSession({ access_token: token, refresh_token: refreshToken });
+  }
+
+  const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+  const session = refreshed?.session || data?.session;
+  const role = session?.user?.user_metadata?.role;
+
+  if (refreshError) {
+    console.warn('Session refresh failed during login:', refreshError.message);
+  }
+
+  if (role) {
+    setUserRole(role);
+  } else {
+    localStorage.removeItem(USER_ROLE_KEY);
+  }
+
+  return { ...data, role };
 };
 
 export const register = (fullName, email, password, role = 'patient') =>
@@ -74,3 +100,15 @@ export const callNextPatient = (doctorId) =>
 
 export const getPatientStatus = () =>
   apiFetch('/queue/patient-status');
+
+export const cancelQueue = () =>
+  apiFetch('/queue/cancel', { method: 'PATCH' });
+
+export const getQueueHistory = () =>
+  apiFetch('/queue/history');
+
+export const startSession = (queueId) =>
+  apiFetch(`/admin/start-session/${queueId}`, { method: 'PATCH' });
+
+export const completeSession = (queueId) =>
+  apiFetch(`/admin/complete-session/${queueId}`, { method: 'PATCH' });

@@ -9,7 +9,6 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const authenticateUser = async (req: Request, res: Response, next: NextFunction) => {
     const token = req.headers.authorization?.split(' ')[1];
-    console.log('Token received:', token ? 'present' : 'missing');
 
     if(!token) return res.status(401).json({error: "No token provided."});
 
@@ -23,10 +22,25 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
     }
 
     const userRole = user.user_metadata?.role;
-    console.log('User role:', userRole);
     if(!userRole) return res.status(401).json({error: "Role not found in user metadata"});
 
     (req as any).user = user;
     (req as any).userRole = userRole;
     next();
+};
+
+export const requireRole = (requiredRole: string) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+        const userRole = (req as any).userRole;
+
+        if (!userRole) {
+            return res.status(401).json({ error: 'Authentication required.' });
+        }
+
+        if (userRole !== requiredRole) {
+            return res.status(403).json({ error: 'Forbidden: insufficient role.' });
+        }
+
+        next();
+    };
 };

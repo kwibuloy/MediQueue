@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getAccessToken, getUserRole, login, register } from '../services/api';
+import { clearAccessToken, getAccessToken, getUserRole, login, register } from '../services/api';
+import { supabase } from '../services/supabaseClient';
 import styles from './RoleAuthCard.module.css';
 
 export default function RoleAuthCard({ role, title, subtitle, registerEnabled = false, redirectTo }) {
@@ -15,11 +16,20 @@ export default function RoleAuthCard({ role, title, subtitle, registerEnabled = 
 
   useEffect(() => {
     const token = getAccessToken();
-    const savedRole = getUserRole();
     if (!token) return;
-    if (!savedRole || savedRole === role) {
-      navigate(redirectTo, { replace: true });
-    }
+
+    const verifyAndRedirect = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      const sessionRole = data?.session?.user?.user_metadata?.role;
+
+      if (error) return;
+
+      if (sessionRole === role) {
+        navigate(redirectTo, { replace: true });
+      }
+    };
+
+    verifyAndRedirect();
   }, [navigate, redirectTo, role]);
 
   const onSubmit = async (e) => {
@@ -30,8 +40,22 @@ export default function RoleAuthCard({ role, title, subtitle, registerEnabled = 
 
     try {
       if (isLoginMode) {
-        await login(email, password);
-        navigate(redirectTo);
+        const result = await login(email, password);
+        if (!result?.role) {
+          clearAccessToken();
+          await supabase.auth.signOut({ scope: 'local' });
+          setError('Unable to verify your role. Please log in again.');
+          return;
+        }
+
+        if (result.role !== role) {
+          clearAccessToken();
+          await supabase.auth.signOut({ scope: 'local' });
+          setError(`You are signed in as ${result.role}, not ${role}.`);
+          return;
+        }
+
+        navigate(redirectTo, { replace: true });
         return;
       }
 

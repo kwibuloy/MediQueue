@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { getAccessToken, getPatientStatus } from '../services/api';
+import React, { useEffect, useState, useRef } from 'react';
+import { getAccessToken, getPatientStatus, cancelQueue } from '../services/api';
 import styles from './StatusChecker.module.css';
 
 const STATUS_LABELS = {
@@ -14,7 +14,9 @@ export default function StatusChecker() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
+  const [canceling, setCanceling] = useState(false);
   const hasToken = !!getAccessToken();
+  const noteTimerRef = useRef(null);
 
   const handleCheck = async ({ background = false } = {}) => {
     if (!hasToken) return;
@@ -28,8 +30,11 @@ export default function StatusChecker() {
 
     try {
       const result = await getPatientStatus();
-      setData(result);
+      // backend returns {} when there's no queue entry for today
+      const hasData = result && Object.keys(result).length > 0;
+      setData(hasData ? result : null);
       setError('');
+      if (!hasData) setNote('');
     } catch (err) {
       if (!background) setError(err.message);
     } finally {
@@ -45,7 +50,10 @@ export default function StatusChecker() {
     if (!hasToken) return undefined;
     handleCheck();
     const interval = setInterval(() => handleCheck({ background: true }), 7000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (noteTimerRef.current) clearTimeout(noteTimerRef.current);
+    };
   }, [hasToken]);
 
   const estimatedWait =
@@ -99,9 +107,29 @@ export default function StatusChecker() {
           <div className={styles.row}>
             <button
               className={styles.btn}
-              onClick={() => setNote('Cancel queue action requires a backend endpoint and will be wired once available.')}
+              onClick={async () => {
+                if (!hasToken) { setNote('Please log in first'); return; }
+                setNote('');
+                setCanceling(true);
+                try {
+                  const res = await cancelQueue();
+                  setNote(res.message || 'Your spot has been cancelled');
+                  // clear local status immediately; next background refresh will confirm
+                  setData(null);
+                  // clear existing timer and auto-clear note after 4s
+                  if (noteTimerRef.current) clearTimeout(noteTimerRef.current);
+                  noteTimerRef.current = setTimeout(() => setNote(''), 4000);
+                  // refresh status in background to sync with server
+                  handleCheck({ background: true });
+                } catch (err) {
+                  setNote(err.message || 'Failed to cancel your spot');
+                } finally {
+                  setCanceling(false);
+                }
+              }}
+              disabled={canceling}
             >
-              Cancel my spot
+              {canceling ? 'Cancelling…' : 'Cancel my spot'}
             </button>
           </div>
           {data.status === 'called' && (

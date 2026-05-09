@@ -1,25 +1,66 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styles from './QueueList.module.css';
 
-export default function QueueList({ queue }) {
+export default function QueueList({ queue, onStartSession, onCompleteSession }) {
+  const [loadingId, setLoadingId] = useState(null);
+
+  const handleSessionAction = async (queueId, action) => {
+    setLoadingId(queueId);
+    try {
+      if (action === 'start' && onStartSession) {
+        await onStartSession(queueId);
+      } else if (action === 'complete' && onCompleteSession) {
+        await onCompleteSession(queueId);
+      }
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
   if (!queue.length) {
     return <div className={styles.empty}>No patients currently waiting.</div>;
   }
 
   return (
     <div className={styles.list}>
-      {queue.map((patient, i) => (
-        <div key={patient.ticket_number} className={`${styles.item} ${i === 0 ? styles.next : ''}`}>
-          <div className={styles.ticket}>{patient.ticket_number}</div>
-          <div className={styles.info}>
-            <div className={styles.name}>{patient.patient_name}</div>
-            <div className={styles.time}>Arrived {patient.arrival_time}</div>
+      {queue.map((patient, i) => {
+        const isNext = i === 0 && patient.status === 'waiting';
+        return (
+          <div key={patient.ticket_number} className={`${styles.item} ${isNext ? styles.next : ''}`}>
+            <div className={styles.ticket}>{patient.ticket_number}</div>
+            <div className={styles.info}>
+              <div className={styles.name}>{patient.patient_name}</div>
+              <div className={styles.time}>Arrived {patient.arrival_time}</div>
+              {patient.status && <div className={styles.status}>Status: {patient.status}</div>}
+            </div>
+            <div className={styles.actions}>
+              {patient.status === 'called' && onStartSession && (
+                <button
+                  className={styles.btnSmall}
+                  onClick={() => handleSessionAction(patient.id, 'start')}
+                  disabled={loadingId === patient.id}
+                >
+                  {loadingId === patient.id ? '…' : 'Start'}
+                </button>
+              )}
+              {patient.status === 'in-consultation' && onCompleteSession && (
+                <button
+                  className={styles.btnSmall}
+                  onClick={() => handleSessionAction(patient.id, 'complete')}
+                  disabled={loadingId === patient.id}
+                >
+                  {loadingId === patient.id ? '…' : 'Complete'}
+                </button>
+              )}
+              {patient.status === 'waiting' && (
+                <div className={`${styles.pos} ${isNext ? styles.posNext : ''}`}>
+                  {isNext ? 'Next up' : `#${i + 1}`}
+                </div>
+              )}
+            </div>
           </div>
-          <div className={`${styles.pos} ${i === 0 ? styles.posNext : ''}`}>
-            {i === 0 ? 'Next up' : `#${i + 1}`}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
