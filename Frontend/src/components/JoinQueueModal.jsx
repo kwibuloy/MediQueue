@@ -17,7 +17,8 @@ export default function JoinQueueModal({ doctor, onClose }) {
     setLoading(true);
     setResult(null);
     try {
-      const data = await joinQueue(doctor.id);
+      const doctorId = doctor.doctor_id ?? doctor.id;
+      const data = await joinQueue(doctorId);
       setResult({
         type: 'success',
         message: `Joined! Your ticket number is #${data.data.ticket_number}.`,
@@ -36,7 +37,7 @@ export default function JoinQueueModal({ doctor, onClose }) {
 
         <div className={styles.badge}>✚</div>
         <h2 className={styles.title}>Join Queue</h2>
-        <p className={styles.sub}>Dr. {doctor.name} — {doctor.specialization || 'General'}</p>
+        <p className={styles.sub}>Dr. {doctor.doctor_name || `${doctor.doctor_first_name || ''} ${doctor.doctor_last_name || ''}`.trim() || doctor.name} — {doctor.specialization || 'General'}</p>
 
         <p className={styles.sub}>Your account identity is attached automatically from your active session.</p>
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { getAccessToken, getUserRole } from '../services/api';
+import { clearAccessToken, getAccessToken, getUserRole } from '../services/api';
 import { supabase } from '../services/supabaseClient';
 
 export default function ProtectedRoute({ requiredRole, children }) {
@@ -21,16 +21,19 @@ export default function ProtectedRoute({ requiredRole, children }) {
         return;
       }
 
-      const { data, error } = await supabase.auth.getSession();
-      const sessionRole = data?.session?.user?.user_metadata?.role;
-      const fallbackRole = getUserRole();
-      const role = sessionRole || fallbackRole;
+      const { data, error } = await supabase.auth.getUser();
+      const user = data?.user;
+      const role = user?.user_metadata?.role || getUserRole();
 
       if (!active) return;
 
-      if (error) {
+      if (error || !user) {
+        clearAccessToken();
+        await supabase.auth.signOut({ scope: 'local' });
         setAllowed(false);
       } else if (requiredRole && role !== requiredRole) {
+        clearAccessToken();
+        await supabase.auth.signOut({ scope: 'local' });
         setAllowed(false);
       } else {
         setAllowed(true);

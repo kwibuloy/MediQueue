@@ -1,22 +1,99 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { getDoctors, getAdminQueue, callNextPatient, startSession, completeSession } from '../services/api';
+import { Link, useNavigate } from 'react-router-dom';
+import { clearAccessToken, getAccessToken, getUserRole, getDoctors, getAdminQueue, getAdminPatientLogs, callNextPatient, startSession, completeSession } from '../services/api';
 import { supabase } from '../services/supabaseClient';
 import QueueList from '../components/QueueList';
 import styles from './AdminPage.module.css';
 
 export default function AdminPage() {
+  const navigate = useNavigate();
   const [doctors, setDoctors] = useState([]);
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
   const [queue, setQueue] = useState([]);
+  const [patientLogs, setPatientLogs] = useState([]);
   const [queueLoaded, setQueueLoaded] = useState(false);
+  const [logsLoaded, setLogsLoaded] = useState(false);
   const [loadingQueue, setLoadingQueue] = useState(false);
+  const [loadingLogs, setLoadingLogs] = useState(false);
   const [callingNext, setCallingNext] = useState(false);
   const [calledTicket, setCalledTicket] = useState(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [doctorAvailable, setDoctorAvailable] = useState(true);
-  const hasToken = !!localStorage.getItem('access_token');
+  const [authChecked, setAuthChecked] = useState(false);
+  const [hasToken, setHasToken] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    const verifyAdminSession = async () => {
+      const token = getAccessToken();
+
+      if (!token) {
+        if (active) {
+          setHasToken(false);
+          setAuthChecked(true);
+        }
+        navigate('/admin/auth', { replace: true });
+        return;
+      }
+
+      const { data, error } = await supabase.auth.getUser();
+      const role = data?.user?.user_metadata?.role || getUserRole();
+
+      if (!active) return;
+
+      if (error || !data?.user) {
+        clearAccessToken();
+        await supabase.auth.signOut({ scope: 'local' });
+        setHasToken(false);
+        setAuthChecked(true);
+        navigate('/admin/auth', { replace: true });
+        return;
+      }
+
+      if (role !== 'admin') {
+        clearAccessToken();
+        await supabase.auth.signOut({ scope: 'local' });
+        setHasToken(false);
+        setAuthChecked(true);
+        navigate('/not-authorized', { replace: true });
+        return;
+      }
+
+      setHasToken(true);
+      setAuthChecked(true);
+    };
+
+    verifyAdminSession();
+
+    const handleAuthChange = () => {
+      const token = getAccessToken();
+      const role = getUserRole();
+
+      if (!token) {
+        setHasToken(false);
+        setAuthChecked(true);
+        navigate('/admin/auth', { replace: true });
+        return;
+      }
+
+      if (role !== 'admin') {
+        setHasToken(false);
+        setAuthChecked(true);
+        navigate('/not-authorized', { replace: true });
+      }
+    };
+
+    window.addEventListener('auth-state-changed', handleAuthChange);
+    window.addEventListener('storage', handleAuthChange);
+
+    return () => {
+      active = false;
+      window.removeEventListener('auth-state-changed', handleAuthChange);
+      window.removeEventListener('storage', handleAuthChange);
+    };
+  }, [navigate]);
 
   useEffect(() => {
     if (!hasToken) return;
@@ -42,11 +119,27 @@ export default function AdminPage() {
     }
   }, [selectedDoctorId]);
 
+  const loadPatientLogs = useCallback(async (opts = { silent: false }) => {
+    if (!selectedDoctorId) return;
+    if (!opts.silent) setLoadingLogs(true);
+    setError('');
+    try {
+      const data = await getAdminPatientLogs(selectedDoctorId);
+      setPatientLogs(data);
+      setLogsLoaded(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      if (!opts.silent) setLoadingLogs(false);
+    }
+  }, [selectedDoctorId]);
+
   useEffect(() => {
     if (!selectedDoctorId || !hasToken) return;
 
     // initial fetch (show loading spinner)
     loadQueue();
+    loadPatientLogs();
 
     // throttled/scheduled fetch helper so we don't hammer the API during bursts
     const scheduledRef = { timer: null, last: 0 };
@@ -56,11 +149,13 @@ export default function AdminPage() {
       const minInterval = 2000; // 2 seconds
       if (elapsed >= minInterval) {
         loadQueue({ silent: true });
+        loadPatientLogs({ silent: true });
         scheduledRef.last = Date.now();
       } else {
         if (scheduledRef.timer) clearTimeout(scheduledRef.timer);
         scheduledRef.timer = setTimeout(() => {
           loadQueue({ silent: true });
+          loadPatientLogs({ silent: true });
           scheduledRef.last = Date.now();
           scheduledRef.timer = null;
         }, minInterval - elapsed);
@@ -136,8 +231,15 @@ export default function AdminPage() {
     }
   };
 
+  const handleSignOut = async () => {
+    clearAccessToken();
+    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    navigate('/admin/auth', { replace: true });
+  };
+
   return (
     <main className={styles.page}>
+      {!authChecked ? null : null}
       {!hasToken && (
         <section className={styles.section}>
           <p className={styles.error}>Please log in as admin first. <Link to="/admin/auth">Go to admin login</Link></p>
@@ -149,6 +251,9 @@ export default function AdminPage() {
       {/* Hero */}
       <section className={styles.hero}>
         <span className={styles.tag}>Admin Dashboard</span>
+        <button className={styles.signOutBtn} onClick={handleSignOut}>
+          Sign out
+        </button>
         <h1 className={styles.title}>
           Queue<br /><em>Control.</em>
         </h1>
@@ -164,14 +269,16 @@ export default function AdminPage() {
             onChange={(e) => {
               setSelectedDoctorId(e.target.value);
               setQueueLoaded(false);
+              setLogsLoaded(false);
               setCalledTicket(null);
               setQueue([]);
+              setPatientLogs([]);
             }}
           >
             <option value="">— Choose a doctor —</option>
             {doctors.map((doc) => (
-              <option key={doc.id} value={doc.id}>
-                Dr. {doc.name} — {doc.specialization || 'General'}
+              <option key={doc.doctor_id} value={doc.doctor_id}>
+                Dr. {doc.doctor_name || `${doc.doctor_first_name || ''} ${doc.doctor_last_name || ''}`.trim()} — {doc.specialization || 'General'}
               </option>
             ))}
           </select>
@@ -267,9 +374,28 @@ export default function AdminPage() {
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Patient Logs</h2>
-        <p className={styles.queueCount}>
-          Patient history log for this doctor is ready in UI but requires backend log/history endpoint.
-        </p>
+        {loadingLogs ? (
+          <div className={styles.loadingQueue}>Loading patient logs…</div>
+        ) : logsLoaded && patientLogs.length === 0 ? (
+          <div className={styles.empty}>No served patients found for this doctor yet.</div>
+        ) : logsLoaded ? (
+          <div className={styles.logList}>
+            {patientLogs.map((patient) => (
+              <article key={patient.queue_id} className={styles.logCard}>
+                <div className={styles.logTopRow}>
+                  <div>
+                    <div className={styles.logName}>{patient.patient_name}</div>
+                    <div className={styles.logMeta}>Ticket #{patient.ticket_number}</div>
+                  </div>
+                  <div className={styles.logBadge}>{patient.status}</div>
+                </div>
+                <div className={styles.logTime}>Served at {patient.served_time}</div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className={styles.queueCount}>Select a doctor to view served patient logs.</p>
+        )}
       </section>
 
       {notice && <p className={styles.error}>{notice}</p>}

@@ -9,10 +9,16 @@ export default function HomePage() {
   const goToRole = (role) => {
     const token = getAccessToken();
     const savedRole = getUserRole();
-    if (token && (!savedRole || savedRole === role)) {
-      navigate(role === 'patient' ? '/patient' : '/admin');
+
+    if (token) {
+      if (savedRole === role) {
+        navigate(role === 'patient' ? '/patient' : '/admin');
+      } else {
+        navigate('/not-authorized');
+      }
       return;
     }
+
     navigate(role === 'patient' ? '/patient/auth' : '/admin/auth');
   };
 

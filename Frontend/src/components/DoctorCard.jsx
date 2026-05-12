@@ -13,7 +13,7 @@ export default function DoctorCard({ doctor, onClick }) {
       onClick={() => available && onClick(doctor)}
     >
       <div className={styles.avatar}>🩺</div>
-      <div className={styles.name}>Dr. {doctor.name}</div>
+      <div className={styles.name}>Dr. {doctor.doctor_name || `${doctor.doctor_first_name || ''} ${doctor.doctor_last_name || ''}`.trim() || doctor.name}</div>
       <div className={styles.spec}>{doctor.specialization || 'General Practitioner'}</div>
       <div className={styles.meta}>Clinic: {clinicName}</div>
       <div className={styles.meta}>

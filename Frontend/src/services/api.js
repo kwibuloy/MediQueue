@@ -15,6 +15,13 @@ const setUserRole = (role) => {
 export const clearAccessToken = () => {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(USER_ROLE_KEY);
+  Object.keys(localStorage).forEach((key) => {
+    if (key.startsWith('sb-') && key.includes('auth-token')) {
+      localStorage.removeItem(key);
+    }
+  });
+  supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+  window.dispatchEvent(new Event('auth-state-changed'));
 };
 
 async function apiFetch(path, options = {}) {
@@ -38,7 +45,12 @@ async function apiFetch(path, options = {}) {
   } catch {
     throw new Error(`Non-JSON response from API for ${path}. Check API base URL and endpoint.`);
   }
-  if (!res.ok) throw new Error(data.error || data.message || 'Request failed');
+  if (!res.ok) {
+    if (res.status === 401 || res.status === 403) {
+      clearAccessToken();
+    }
+    throw new Error(data.error || data.message || 'Request failed');
+  }
   return data;
 }
 
@@ -94,6 +106,9 @@ export const joinQueue = (doctorId) =>
 
 export const getAdminQueue = (doctorId) =>
   apiFetch(`/queue/admin/${doctorId}`);
+
+export const getAdminPatientLogs = (doctorId) =>
+  apiFetch(`/queue/admin-history/${doctorId}`);
 
 export const callNextPatient = (doctorId) =>
   apiFetch(`/admin/call-next/${doctorId}`, { method: 'PATCH' });

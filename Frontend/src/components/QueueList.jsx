@@ -24,9 +24,10 @@ export default function QueueList({ queue, onStartSession, onCompleteSession }) 
   return (
     <div className={styles.list}>
       {queue.map((patient, i) => {
+        const id = patient.queue_id ?? patient.id;
         const isNext = i === 0 && patient.status === 'waiting';
         return (
-          <div key={patient.ticket_number} className={`${styles.item} ${isNext ? styles.next : ''}`}>
+          <div key={id ?? patient.ticket_number} className={`${styles.item} ${isNext ? styles.next : ''}`}>
             <div className={styles.ticket}>{patient.ticket_number}</div>
             <div className={styles.info}>
               <div className={styles.name}>{patient.patient_name}</div>
@@ -37,19 +38,19 @@ export default function QueueList({ queue, onStartSession, onCompleteSession }) 
               {patient.status === 'called' && onStartSession && (
                 <button
                   className={styles.btnSmall}
-                  onClick={() => handleSessionAction(patient.id, 'start')}
-                  disabled={loadingId === patient.id}
+                  onClick={() => handleSessionAction(id, 'start')}
+                  disabled={loadingId === id}
                 >
-                  {loadingId === patient.id ? '…' : 'Start'}
+                  {loadingId === id ? '…' : 'Start'}
                 </button>
               )}
               {patient.status === 'in-consultation' && onCompleteSession && (
                 <button
                   className={styles.btnSmall}
-                  onClick={() => handleSessionAction(patient.id, 'complete')}
-                  disabled={loadingId === patient.id}
+                  onClick={() => handleSessionAction(id, 'complete')}
+                  disabled={loadingId === id}
                 >
-                  {loadingId === patient.id ? '…' : 'Complete'}
+                  {loadingId === id ? '…' : 'Complete'}
                 </button>
               )}
               {patient.status === 'waiting' && (

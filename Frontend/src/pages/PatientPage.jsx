@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { clearAccessToken, getAccessToken, getDoctors, getQueueHistory, cancelQueue } from '../services/api';
 import DoctorCard from '../components/DoctorCard';
 import JoinQueueModal from '../components/JoinQueueModal';
@@ -7,6 +7,7 @@ import StatusChecker from '../components/StatusChecker';
 import styles from './PatientPage.module.css';
 
 export default function PatientPage() {
+  const navigate = useNavigate();
   const [doctors, setDoctors] = useState([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -64,6 +65,11 @@ export default function PatientPage() {
     });
   }, [doctors, query]);
 
+  const handleSignOut = async () => {
+    clearAccessToken();
+    navigate('/patient/auth', { replace: true });
+  };
+
   return (
     <main className={styles.page}>
       {/* Hero */}
@@ -87,10 +93,7 @@ export default function PatientPage() {
             <h2 className={styles.sectionTitle}>Patient Dashboard</h2>
             <button
               className={styles.refreshBtn}
-              onClick={() => {
-                clearAccessToken();
-                window.location.reload();
-              }}
+              onClick={handleSignOut}
             >
               Sign out
             </button>
@@ -128,7 +131,7 @@ export default function PatientPage() {
           <div className={styles.grid}>
             {filteredDoctors.map((doc) => (
               <DoctorCard
-                key={doc.id}
+                key={doc.doctor_id ?? doc.id}
                 doctor={doc}
                 onClick={setSelectedDoctor}
               />
@@ -163,7 +166,7 @@ export default function PatientPage() {
                 const dateStr = item.created_at ? new Date(item.created_at).toLocaleString() : '';
                 const status = item.status || '';
                 return (
-                  <div key={item.id} className={styles.historyItem}>
+                  <div key={item.queue_id || item.id} className={styles.historyItem}>
                     <div className={styles.historyMeta}>
                       <div className={styles.historyDoctor}>
                         <strong>{item.doctor_name || 'Doctor'}</strong>
