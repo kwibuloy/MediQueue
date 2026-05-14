@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { memo } from 'react';
 import styles from './DoctorCard.module.css';
 
-export default function DoctorCard({ doctor, onClick }) {
+function DoctorCard({ doctor, onClick }) {
   const available = doctor.is_available;
   const queueLength = doctor.current_queue_length ?? doctor.queue_length ?? null;
   const estimatedWait = doctor.estimated_wait_minutes ?? null;
@@ -29,3 +29,29 @@ export default function DoctorCard({ doctor, onClick }) {
     </div>
   );
 }
+
+function doctorDisplayKey(d) {
+  return d.doctor_id ?? d.id;
+}
+
+function areDoctorPropsEqual(prev, next) {
+  if (prev.onClick !== next.onClick) return false;
+  const a = prev.doctor;
+  const b = next.doctor;
+  if (doctorDisplayKey(a) !== doctorDisplayKey(b)) return false;
+  if (!!a.is_available !== !!b.is_available) return false;
+  if ((a.current_queue_length ?? a.queue_length) !== (b.current_queue_length ?? b.queue_length)) {
+    return false;
+  }
+  if ((a.estimated_wait_minutes ?? null) !== (b.estimated_wait_minutes ?? null)) return false;
+  const nameA = a.doctor_name || `${a.doctor_first_name || ''} ${a.doctor_last_name || ''}`.trim() || a.name;
+  const nameB = b.doctor_name || `${b.doctor_first_name || ''} ${b.doctor_last_name || ''}`.trim() || b.name;
+  if (nameA !== nameB) return false;
+  if ((a.specialization || '') !== (b.specialization || '')) return false;
+  const clinicA = a.clinic || a.clinic_name || '';
+  const clinicB = b.clinic || b.clinic_name || '';
+  if (clinicA !== clinicB) return false;
+  return true;
+}
+
+export default memo(DoctorCard, areDoctorPropsEqual);

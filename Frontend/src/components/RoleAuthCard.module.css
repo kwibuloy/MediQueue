@@ -9,6 +9,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 30px;
+  box-shadow: var(--shadow);
 }
 
 .title {
@@ -36,6 +37,12 @@
   padding: 12px 14px;
 }
 
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
 .submitBtn,
 .switchBtn {
   border: none;
@@ -45,7 +52,7 @@
 
 .submitBtn {
   background: var(--accent);
-  color: #111;
+  color: var(--accent-ink);
   font-weight: 700;
   margin-top: 4px;
 }
@@ -53,6 +60,10 @@
 .submitBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: var(--accent-dark);
 }
 
 .switchBtn {
@@ -70,17 +81,18 @@
 
 .success {
   margin-top: 10px;
-  color: #9ae89a;
+  color: var(--green);
 }
 
 .error {
   margin-top: 10px;
-  color: #ffd1d1;
+  color: var(--red);
 }
 
 .backLink {
   display: inline-block;
   margin-top: 18px;
-  color: var(--ink);
+  color: var(--accent-dark);
   font-size: 14px;
+  font-weight: 600;
 }

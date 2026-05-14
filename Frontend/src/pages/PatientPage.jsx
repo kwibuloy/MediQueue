@@ -11,6 +11,7 @@ export default function PatientPage() {
   const [doctors, setDoctors] = useState([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [quietDoctorsBusy, setQuietDoctorsBusy] = useState(false);
   const [error, setError] = useState('');
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -18,8 +19,12 @@ export default function PatientPage() {
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const hasToken = !!getAccessToken();
 
-  const fetchDoctors = useCallback(async () => {
-    setLoading(true);
+  const fetchDoctors = useCallback(async ({ silent = false } = {}) => {
+    if (silent) {
+      setQuietDoctorsBusy(true);
+    } else {
+      setLoading(true);
+    }
     setError('');
     try {
       const data = await getDoctors();
@@ -27,7 +32,11 @@ export default function PatientPage() {
     } catch (err) {
       setError('Could not load doctors. Is the server running?');
     } finally {
-      setLoading(false);
+      if (silent) {
+        setQuietDoctorsBusy(false);
+      } else {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -50,7 +59,7 @@ export default function PatientPage() {
   }, [hasToken]);
   useEffect(() => {
     if (!hasToken) return;
-    const interval = setInterval(fetchDoctors, 12000);
+    const interval = setInterval(() => fetchDoctors({ silent: true }), 12000);
     return () => clearInterval(interval);
   }, [fetchDoctors, hasToken]);
 
@@ -58,10 +67,23 @@ export default function PatientPage() {
     const term = query.trim().toLowerCase();
     if (!term) return doctors;
     return doctors.filter((doc) => {
-      const name = (doc.name || '').toLowerCase();
+      const fullName =
+        doc.doctor_name ||
+        `${doc.doctor_first_name || ''} ${doc.doctor_last_name || ''}`.trim() ||
+        doc.name ||
+        '';
+      const name = fullName.toLowerCase();
+      const first = (doc.doctor_first_name || '').toLowerCase();
+      const last = (doc.doctor_last_name || '').toLowerCase();
       const specialty = (doc.specialization || '').toLowerCase();
       const clinic = (doc.clinic || doc.clinic_name || 'main clinic').toLowerCase();
-      return name.includes(term) || specialty.includes(term) || clinic.includes(term);
+      return (
+        name.includes(term) ||
+        first.includes(term) ||
+        last.includes(term) ||
+        specialty.includes(term) ||
+        clinic.includes(term)
+      );
     });
   }, [doctors, query]);
 
@@ -78,6 +100,7 @@ export default function PatientPage() {
         <h1 className={styles.title}>
           Skip the<br /><em>waiting room.</em>
         </h1>
+        <div className={styles.heroPulse} aria-hidden />
         <p className={styles.sub}>
           Join a doctor's queue digitally and track your position in real time.
         </p>
@@ -105,7 +128,11 @@ export default function PatientPage() {
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Find a Doctor</h2>
-          <button className={styles.refreshBtn} onClick={fetchDoctors} disabled={loading}>
+          <button
+            className={styles.refreshBtn}
+            onClick={() => fetchDoctors({ silent: true })}
+            disabled={loading || quietDoctorsBusy}
+          >
             ↻ Refresh
           </button>
         </div>

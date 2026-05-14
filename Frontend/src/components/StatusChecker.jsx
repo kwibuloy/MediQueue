@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { getAccessToken, getPatientStatus, cancelQueue } from '../services/api';
 import styles from './StatusChecker.module.css';
 
@@ -8,9 +8,14 @@ const STATUS_LABELS = {
   done: 'Done',
 };
 
+/** Stable string so unchanged polls keep the same `data` reference (avoids visual flicker). */
+function queueStatusFingerprint(row) {
+  if (!row || typeof row !== 'object' || Object.keys(row).length === 0) return '__empty__';
+  return `${row.queue_id}|${row.ticket_number}|${row.status}|${row.position_in_queue}`;
+}
+
 export default function StatusChecker() {
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
@@ -18,33 +23,31 @@ export default function StatusChecker() {
   const hasToken = !!getAccessToken();
   const noteTimerRef = useRef(null);
 
-  const handleCheck = async ({ background = false } = {}) => {
-    if (!hasToken) return;
+  const handleCheck = useCallback(async ({ background = false } = {}) => {
+    if (!getAccessToken()) return;
 
-    if (background) {
-      setRefreshing(true);
-    } else {
+    if (!background) {
       setLoading(true);
       setError('');
     }
 
     try {
       const result = await getPatientStatus();
-      // backend returns {} when there's no queue entry for today
       const hasData = result && Object.keys(result).length > 0;
-      setData(hasData ? result : null);
+      const next = hasData ? result : null;
+      const fp = queueStatusFingerprint(next);
+
+      setData((prev) => (queueStatusFingerprint(prev) === fp ? prev : next));
       setError('');
       if (!hasData) setNote('');
     } catch (err) {
       if (!background) setError(err.message);
     } finally {
-      if (background) {
-        setRefreshing(false);
-      } else {
+      if (!background) {
         setLoading(false);
       }
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!hasToken) return undefined;
@@ -54,7 +57,7 @@ export default function StatusChecker() {
       clearInterval(interval);
       if (noteTimerRef.current) clearTimeout(noteTimerRef.current);
     };
-  }, [hasToken]);
+  }, [hasToken, handleCheck]);
 
   const estimatedWait =
     data && data.status === 'waiting' && typeof data.position_in_queue === 'number'
@@ -140,7 +143,7 @@ export default function StatusChecker() {
         </div>
       )}
       <p className={styles.liveTag}>
-        Live updates active (auto-refresh every 7s){refreshing ? ' • syncing…' : ''}.
+        Live updates active (auto-refresh every 7s).
       </p>
       {note && <p className={styles.error}>{note}</p>}
     </div>

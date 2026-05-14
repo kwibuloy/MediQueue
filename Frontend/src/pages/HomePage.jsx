@@ -27,6 +27,7 @@ export default function HomePage() {
       <section className={styles.hero}>
         <span className={styles.tag}>Mediqueue</span>
         <h1 className={styles.title}>Skip the wait. Queue smarter. Get seen faster.</h1>
+        <div className={styles.heroPulse} aria-hidden />
         <p className={styles.intro}>
           Mediqueue helps patients and clinics manage appointments through a real-time digital queue,
           reducing waiting-room congestion and making queue movement visible for everyone.

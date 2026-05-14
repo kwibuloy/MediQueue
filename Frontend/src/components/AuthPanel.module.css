@@ -1,8 +1,9 @@
 .card {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  padding: 1rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .headerRow {
@@ -15,11 +16,13 @@
 .title {
   font-family: var(--font-display);
   font-size: 1.2rem;
+  color: var(--ink);
 }
 
 .sub {
   margin-top: 0.4rem;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ink-muted);
+  font-size: 0.95rem;
 }
 
 .form {
@@ -30,30 +33,43 @@
 
 .input {
   width: 100%;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  background: rgba(0, 0, 0, 0.25);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg3);
   color: var(--ink);
   padding: 0.65rem 0.75rem;
+  font-size: 15px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
 .primaryBtn,
 .secondaryBtn,
 .linkBtn {
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 0.55rem 0.8rem;
+  font-size: 14px;
 }
 
 .primaryBtn {
-  background: var(--accent-dark);
-  color: #072215;
+  background: var(--accent);
+  color: var(--accent-ink);
   font-weight: 700;
 }
 
+.primaryBtn:hover:not(:disabled) {
+  background: var(--accent-dark);
+}
+
 .secondaryBtn {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--bg3);
   color: var(--ink);
+  border: 1px solid var(--border);
 }
 
 .switchRow {
@@ -62,17 +78,19 @@
 
 .linkBtn {
   background: transparent;
-  color: var(--ink);
+  color: var(--accent-dark);
   text-decoration: underline;
   padding-left: 0;
 }
 
 .success {
   margin-top: 0.6rem;
-  color: #90ee90;
+  color: var(--green);
+  font-size: 14px;
 }
 
 .error {
   margin-top: 0.6rem;
-  color: #ffd1d1;
+  color: var(--red);
+  font-size: 14px;
 }

@@ -10,44 +10,81 @@
   border-bottom: 1px solid var(--border);
   margin-bottom: 56px;
   position: relative;
+  isolation: isolate;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 72% 52% at 94% 10%, rgba(5, 150, 105, 0.09), transparent 52%),
+    var(--pattern-medical-plus-green);
+  background-repeat: no-repeat, repeat;
+  background-size: auto, 44px 44px;
+  pointer-events: none;
 }
 
 .hero::after {
-  content: '⊞';
+  content: '';
   position: absolute;
   right: 0;
-  top: 48px;
-  font-size: 100px;
-  color: var(--border);
-  line-height: 1;
+  top: 36px;
+  width: 96px;
+  height: 96px;
+  z-index: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23059669' stroke-width='2.5' stroke-opacity='0.12'%3E%3Cpath d='M50 16v68M16 50h68'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
   pointer-events: none;
   user-select: none;
 }
 
+.hero > * {
+  position: relative;
+  z-index: 1;
+}
+
 .tag {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   background: var(--green-light);
-  border: 1px solid rgba(82,183,136,0.25);
+  border: 1px solid var(--green-border);
   color: var(--green);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 5px 14px;
+  padding: 6px 14px 6px 12px;
   border-radius: var(--radius-full);
   margin-bottom: 22px;
 }
 
+.tag::before {
+  content: '';
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+  background:
+    linear-gradient(var(--green), var(--green)) center / 2px 100% no-repeat,
+    linear-gradient(var(--green), var(--green)) center / 100% 2px no-repeat;
+  border-radius: 1px;
+  opacity: 0.85;
+}
+
 .title {
   font-family: var(--font-display);
-  font-size: clamp(44px, 8vw, 66px);
-  line-height: 1.05;
+  font-size: clamp(36px, 7vw, 58px);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
   color: var(--ink);
 }
 
 .title em {
   color: var(--green);
   font-style: italic;
+  font-weight: 600;
 }
 
 /* Sign out button */
@@ -75,8 +112,11 @@
 .sectionTitle {
   font-family: var(--font-display);
   font-size: 28px;
+  font-weight: 600;
   color: var(--ink);
   margin-bottom: 16px;
+  padding-left: 14px;
+  border-left: 3px solid var(--green);
 }
 
 /* Select row */
@@ -104,7 +144,7 @@
 
 .loadBtn {
   background: var(--green);
-  color: #0e0f11;
+  color: var(--accent-ink);
   border: none;
   border-radius: var(--radius-sm);
   padding: 12px 26px;
@@ -114,7 +154,7 @@
   transition: background var(--transition);
 }
 
-.loadBtn:hover:not(:disabled) { background: #3fa070; }
+.loadBtn:hover:not(:disabled) { background: var(--green-hover); }
 .loadBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .inviteForm {
@@ -141,7 +181,7 @@
 
 .inviteBtn {
   background: var(--green);
-  color: #0e0f11;
+  color: var(--accent-ink);
   border: none;
   border-radius: var(--radius-sm);
   padding: 12px 20px;
@@ -252,7 +292,7 @@
 
 .callBtn {
   background: var(--green);
-  color: #0e0f11;
+  color: var(--accent-ink);
   border: none;
   border-radius: var(--radius-sm);
   padding: 10px 22px;
@@ -262,13 +302,13 @@
   transition: background var(--transition);
 }
 
-.callBtn:hover:not(:disabled) { background: #3fa070; }
+.callBtn:hover:not(:disabled) { background: var(--green-hover); }
 .callBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* Called banner */
 .calledBanner {
   background: var(--green-light);
-  border: 1px solid rgba(82,183,136,0.3);
+  border: 1px solid var(--green-border);
   border-radius: var(--radius-sm);
   padding: 18px 22px;
   display: flex;
@@ -296,8 +336,10 @@
 }
 
 .calledNum {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
   font-size: 30px;
+  font-weight: 600;
   color: var(--ink);
   line-height: 1;
 }
@@ -316,10 +358,11 @@
 }
 
 .logCard {
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.015));
+  background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 16px 18px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .logTopRow {
@@ -347,8 +390,8 @@
   font-size: 11px;
   font-weight: 700;
   color: var(--green);
-  background: rgba(82, 183, 136, 0.12);
-  border: 1px solid rgba(82, 183, 136, 0.22);
+  background: var(--green-light);
+  border: 1px solid var(--green-border);
   border-radius: 999px;
   padding: 6px 10px;
 }

@@ -7,6 +7,7 @@
   transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .card::after {
@@ -19,9 +20,9 @@
 }
 
 .card:hover { 
-  transform: translateY(-4px); 
+  transform: translateY(-3px); 
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent), var(--shadow);
+  box-shadow: var(--shadow);
 }
 
 .card:hover::after { opacity: 1; }

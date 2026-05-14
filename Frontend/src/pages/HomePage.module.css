@@ -9,47 +9,91 @@
   border-bottom: 1px solid var(--border);
   margin-bottom: 52px;
   position: relative;
+  isolation: isolate;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 78% 58% at 96% 6%, rgba(13, 148, 136, 0.09), transparent 55%),
+    var(--pattern-medical-plus);
+  background-repeat: no-repeat, repeat;
+  background-size: auto, 44px 44px;
+  pointer-events: none;
 }
 
 .hero::after {
-  content: '✚';
+  content: '';
   position: absolute;
   right: 0;
-  top: 48px;
-  font-size: 120px;
-  color: var(--border);
-  line-height: 1;
+  top: 40px;
+  width: 112px;
+  height: 112px;
+  z-index: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%230d9488' stroke-width='2.5' stroke-opacity='0.11'%3E%3Cpath d='M50 16v68M16 50h68'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
   pointer-events: none;
   user-select: none;
 }
 
+.hero > * {
+  position: relative;
+  z-index: 1;
+}
+
 .tag {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   background: var(--accent-glow);
-  border: 1px solid rgba(232, 200, 109, 0.25);
-  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  color: var(--accent-dark);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 5px 14px;
+  padding: 6px 14px 6px 12px;
   border-radius: var(--radius-full);
   margin-bottom: 22px;
 }
 
+.tag::before {
+  content: '';
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+  background:
+    linear-gradient(var(--accent), var(--accent)) center / 2px 100% no-repeat,
+    linear-gradient(var(--accent), var(--accent)) center / 100% 2px no-repeat;
+  border-radius: 1px;
+  opacity: 0.88;
+}
+
 .title {
   font-family: var(--font-display);
-  font-size: clamp(36px, 6vw, 60px);
-  line-height: 1.08;
+  font-size: clamp(34px, 5.8vw, 56px);
+  font-weight: 600;
+  line-height: 1.18;
+  letter-spacing: -0.015em;
   color: var(--ink);
   margin-bottom: 18px;
   max-width: 760px;
 }
 
+.heroPulse {
+  width: 100%;
+  max-width: 480px;
+  height: 26px;
+  margin: 4px 0 16px;
+  background: var(--pattern-pulse-line) no-repeat left center / 100% 100%;
+}
+
 .intro {
   font-size: 16px;
   color: var(--ink-muted);
-  line-height: 1.7;
+  line-height: 1.75;
   max-width: 620px;
 }
 
@@ -61,7 +105,18 @@
   font-size: 15px;
   font-weight: 700;
   background: var(--accent);
-  color: #111;
+  color: var(--accent-ink);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: background var(--transition), transform 0.15s ease;
+}
+
+.getStartedBtn:hover {
+  background: var(--accent-dark);
+}
+
+.getStartedBtn:active {
+  transform: scale(0.98);
 }
 
 /* Sections */
@@ -72,8 +127,11 @@
 .sectionTitle {
   font-family: var(--font-display);
   font-size: 26px;
+  font-weight: 600;
   color: var(--ink);
   margin-bottom: 8px;
+  padding-left: 14px;
+  border-left: 3px solid var(--accent);
 }
 
 .sectionSub {
@@ -99,11 +157,15 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 20px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .step h3 {
   margin: 10px 0 8px;
   font-size: 18px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .step p {
@@ -117,7 +179,8 @@
   height: 28px;
   border-radius: 50%;
   background: var(--accent-glow);
-  border: 1px solid var(--accent);
+  border: 1px solid var(--accent-border);
+  color: var(--accent-dark);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -128,7 +191,9 @@
 .featureTitle {
   display: block;
   color: var(--ink);
+  font-family: var(--font-display);
   font-weight: 600;
+  font-size: 17px;
   margin-bottom: 8px;
 }
 
@@ -142,7 +207,7 @@
 .modalOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--overlay-scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -155,6 +220,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 24px;
+  box-shadow: var(--shadow-lg);
 }
 
 .modal h3 {

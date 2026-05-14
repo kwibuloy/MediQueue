@@ -5,9 +5,9 @@ import App from './App.jsx';
 
 function Fallback({ error }) {
   return (
-    <div style={{ padding: 24, color: '#f0eeea', fontFamily: 'sans-serif', maxWidth: 560 }}>
-      <h1 style={{ color: '#e8c86d' }}>Something went wrong</h1>
-      <pre style={{ background: '#161719', padding: 16, borderRadius: 8, overflow: 'auto', fontSize: 13 }}>
+    <div style={{ padding: 24, color: '#0f172a', fontFamily: "'Source Sans 3', system-ui, sans-serif", maxWidth: 560, background: '#f8fafc', minHeight: '100vh' }}>
+      <h1 style={{ color: '#0d9488' }}>Something went wrong</h1>
+      <pre style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: 16, borderRadius: 8, overflow: 'auto', fontSize: 13, color: '#334155' }}>
         {error?.message || String(error)}
       </pre>
     </div>
