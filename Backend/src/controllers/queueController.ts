@@ -29,15 +29,39 @@ export const joinQueue = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Patient ID and doctor ID are required' });
         }
 
-        const checkSql = `SELECT queue_id FROM queues 
-                          WHERE user_id = $1 
-                          AND doctor_id = $2 
-                          AND status = 'waiting'
-                          AND created_at::date = CURRENT_DATE;`;
-        const existing = await query(checkSql, [patientId, doctorId]);
+        const doctorAvailabilitySql = `
+            SELECT doctor_id, is_available
+            FROM doctors
+            WHERE doctor_id = $1
+            LIMIT 1;
+        `;
+        const doctorAvailabilityResult = await query(doctorAvailabilitySql, [doctorId]);
+
+        if (doctorAvailabilityResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Doctor not found' });
+        }
+
+        if (!doctorAvailabilityResult.rows[0].is_available) {
+            return res.status(400).json({ error: 'This doctor is currently unavailable and not accepting queue requests' });
+        }
+
+        const checkSql = `
+            SELECT queue_id, doctor_id, status
+            FROM queues
+            WHERE user_id = $1
+              AND status IN ('waiting', 'called', 'in-consultation')
+              AND (created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date
+            ORDER BY created_at DESC
+            LIMIT 1;
+        `;
+        const existing = await query(checkSql, [patientId]);
 
         if (existing.rows.length > 0) {
-            return res.status(400).json({ error: 'You are already in this doctor\'s queue' });
+            const existingDoctorId = existing.rows[0].doctor_id;
+            if (String(existingDoctorId) === String(doctorId)) {
+                return res.status(400).json({ error: 'You are already in this doctor\'s queue' });
+            }
+            return res.status(400).json({ error: 'You already have an active queue with another doctor' });
         }
 
         const sql = `INSERT INTO queues (user_id, doctor_id, ticket_number, status) 
@@ -287,6 +311,86 @@ export const completeSession = async (req: Request, res: Response) => {
         return res.status(200).json({ message: 'Session completed', data: result.rows[0] });
     } catch (err) {
         console.error('Error completing session:', err);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
+
+export const skipCurrentPatient = async (req: Request, res: Response) => {
+    const { doctorId } = req.params;
+    try {
+        const sql = `
+            UPDATE queues
+            SET status = 'skipped'
+            WHERE queue_id = (
+                SELECT queue_id FROM queues
+                WHERE doctor_id = $1
+                  AND status = 'called'
+                  AND (created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date
+                ORDER BY ticket_number ASC
+                LIMIT 1
+            )
+            RETURNING queue_id, ticket_number, user_id, status;
+        `;
+        const result = await query(sql, [doctorId]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'No called patient to skip' });
+        }
+        return res.status(200).json({ message: 'Patient skipped', data: result.rows[0] });
+    } catch (err) {
+        console.error('Error skipping patient:', err);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
+
+export const closeCurrentPatient = async (req: Request, res: Response) => {
+    const { doctorId } = req.params;
+    try {
+        const sql = `
+            UPDATE queues
+            SET status = 'removed'
+            WHERE doctor_id = $1
+              AND status = 'waiting'
+              AND (created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date
+            RETURNING queue_id, ticket_number, user_id, status;
+        `;
+        const result = await query(sql, [doctorId]);
+        if (result.rowCount === 0) {
+            return res.status(200).json({ message: 'No waiting patients to remove', data: [], removedCount: 0 });
+        }
+        return res.status(200).json({ message: 'Queue closed: waiting patients removed', data: result.rows, removedCount: result.rowCount });
+    } catch (err) {
+        console.error('Error closing patient:', err);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
+
+export const updateDoctorAvailability = async (req: Request, res: Response) => {
+    const { doctorId } = req.params;
+    const { isAvailable } = req.body;
+
+    try {
+        if (typeof isAvailable !== 'boolean') {
+            return res.status(400).json({ error: 'isAvailable (boolean) is required' });
+        }
+
+        const sql = `
+            UPDATE doctors
+            SET is_available = $2
+            WHERE doctor_id = $1
+            RETURNING doctor_id, is_available;
+        `;
+
+        const result = await query(sql, [doctorId, isAvailable]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Doctor not found' });
+        }
+
+        return res.status(200).json({
+            message: `Doctor marked as ${isAvailable ? 'available' : 'unavailable'}`,
+            doctor: result.rows[0],
+        });
+    } catch (err) {
+        console.error('Error updating doctor availability:', err);
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 }

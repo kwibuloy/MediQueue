@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { clearAccessToken, getAccessToken, getUserRole, getDoctors, getAdminQueue, getAdminPatientLogs, callNextPatient, startSession, completeSession } from '../services/api';
+import { clearAccessToken, getAccessToken, getUserRole, getDoctors, getAdminQueue, getAdminPatientLogs, callNextPatient, startSession, completeSession, inviteAdmin, getPendingInvitations, revokeInvitation, skipPatient, closeQueueForDoctor, setDoctorAvailability } from '../services/api';
 import { supabase } from '../services/supabaseClient';
 import QueueList from '../components/QueueList';
 import styles from './AdminPage.module.css';
@@ -19,6 +19,11 @@ export default function AdminPage() {
   const [calledTicket, setCalledTicket] = useState(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteActionLoading, setInviteActionLoading] = useState('');
+  const [invitations, setInvitations] = useState([]);
+  const [invitesLoaded, setInvitesLoaded] = useState(false);
   const [doctorAvailable, setDoctorAvailable] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   const [hasToken, setHasToken] = useState(false);
@@ -39,7 +44,7 @@ export default function AdminPage() {
       }
 
       const { data, error } = await supabase.auth.getUser();
-      const role = data?.user?.user_metadata?.role || getUserRole();
+      const role = getUserRole() || data?.user?.user_metadata?.role;
 
       if (!active) return;
 
@@ -101,6 +106,21 @@ export default function AdminPage() {
       .then(setDoctors)
       .catch(() => setError('Failed to load doctors.'));
   }, [hasToken]);
+
+  const loadInvitations = useCallback(async () => {
+    try {
+      const data = await getPendingInvitations();
+      setInvitations(data.invitations || []);
+      setInvitesLoaded(true);
+    } catch (err) {
+      setNotice(err.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!hasToken) return;
+    loadInvitations();
+  }, [hasToken, loadInvitations]);
 
   // loadQueue supports a silent option so realtime updates don't show a global loading overlay
   const loadQueue = useCallback(async (opts = { silent: false }) => {
@@ -188,7 +208,7 @@ export default function AdminPage() {
   }, [hasToken, loadQueue, selectedDoctorId]);
 
   useEffect(() => {
-    const selected = doctors.find((d) => String(d.id) === String(selectedDoctorId));
+    const selected = doctors.find((d) => String(d.doctor_id) === String(selectedDoctorId));
     if (selected) setDoctorAvailable(!!selected.is_available);
   }, [selectedDoctorId, doctors]);
 
@@ -235,6 +255,62 @@ export default function AdminPage() {
     clearAccessToken();
     await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
     navigate('/admin/auth', { replace: true });
+  };
+
+  const handleToggleAvailability = async () => {
+    if (!selectedDoctorId) return;
+
+    try {
+      setError('');
+      setNotice('');
+      const nextAvailability = !doctorAvailable;
+      await setDoctorAvailability(selectedDoctorId, nextAvailability);
+      setDoctorAvailable(nextAvailability);
+      setDoctors((prev) =>
+        prev.map((doc) =>
+          String(doc.doctor_id) === String(selectedDoctorId)
+            ? { ...doc, is_available: nextAvailability }
+            : doc
+        )
+      );
+      setNotice(`Doctor is now ${nextAvailability ? 'available' : 'unavailable'}.`);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleInviteAdmin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setNotice('');
+    setInviteLoading(true);
+
+    try {
+      await inviteAdmin(inviteEmail);
+      setNotice(`Invitation sent to ${inviteEmail}`);
+      setInviteEmail('');
+      await loadInvitations();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const handleCancelInvite = async (email) => {
+    setInviteActionLoading(email);
+    setError('');
+    setNotice('');
+
+    try {
+      await revokeInvitation(email);
+      setNotice(`Invitation for ${email} cancelled.`);
+      await loadInvitations();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setInviteActionLoading('');
+    }
   };
 
   return (
@@ -293,6 +369,50 @@ export default function AdminPage() {
         {error && <p className={styles.error}>{error}</p>}
       </section>
 
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Invite Admin</h2>
+        <p className={styles.queueCount}>Send an invitation to a clinician who should have admin access.</p>
+        <form className={styles.inviteForm} onSubmit={handleInviteAdmin}>
+          <input
+            className={styles.inviteInput}
+            type="email"
+            placeholder="doctor@clinic.com"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            required
+          />
+          <button className={styles.inviteBtn} type="submit" disabled={inviteLoading}>
+            {inviteLoading ? 'Sending…' : 'Send Invite'}
+          </button>
+        </form>
+        {invitesLoaded && (
+          <div className={styles.inviteList}>
+            {invitations.length === 0 ? (
+              <div className={styles.empty}>No pending admin invitations.</div>
+            ) : (
+              invitations.map((item) => (
+                <div key={item.invitation_id} className={styles.inviteCard}>
+                  <div>
+                    <div className={styles.inviteEmail}>{item.email}</div>
+                    <div className={styles.inviteMeta}>
+                      Created {item.created_at ? new Date(item.created_at).toLocaleString() : 'recently'}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.cancelInviteBtn}
+                    onClick={() => handleCancelInvite(item.email)}
+                    disabled={inviteActionLoading === item.email}
+                  >
+                    {inviteActionLoading === item.email ? 'Cancelling…' : 'Cancel Invite'}
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </section>
+
       {/* Queue section */}
       {queueLoaded && (
         <section className={styles.section}>
@@ -318,9 +438,29 @@ export default function AdminPage() {
               >
                 {callingNext ? 'Calling…' : '✚ Call Next'}
               </button>
-              <button className={styles.loadBtn} onClick={() => setNotice('Mark served action needs backend endpoint.')}>Mark Served</button>
-              <button className={styles.loadBtn} onClick={() => setNotice('Skip action needs backend endpoint.')}>Skip</button>
-              <button className={styles.loadBtn} onClick={() => setNotice('Close queue action needs backend endpoint.')}>Close Queue</button>
+              <button className={styles.loadBtn} onClick={async () => {
+                try {
+                  setNotice('');
+                  setError('');
+                  await skipPatient(selectedDoctorId);
+                  setNotice('Patient skipped.');
+                  await loadQueue();
+                } catch (err) {
+                  setError(err.message);
+                }
+              }}>Skip</button>
+              <button className={styles.loadBtn} onClick={async () => {
+                try {
+                  setNotice('');
+                  setError('');
+                  const result = await closeQueueForDoctor(selectedDoctorId);
+                  const removedCount = result?.removedCount ?? 0;
+                  setNotice(`Queue closed. Removed ${removedCount} waiting patient${removedCount === 1 ? '' : 's'}.`);
+                  await loadQueue();
+                } catch (err) {
+                  setError(err.message);
+                }
+              }}>Close Queue</button>
             </div>
           </div>
 
@@ -364,7 +504,8 @@ export default function AdminPage() {
         <div className={styles.selectRow}>
           <button
             className={styles.callBtn}
-            onClick={() => setNotice('Doctor availability update endpoint not available yet.')}
+            onClick={handleToggleAvailability}
+            disabled={!selectedDoctorId}
           >
             Set as {doctorAvailable ? 'Unavailable' : 'Available'}
           </button>

@@ -7,7 +7,8 @@ import styles from './RoleAuthCard.module.css';
 export default function RoleAuthCard({ role, title, subtitle, registerEnabled = false, redirectTo }) {
   const navigate = useNavigate();
   const [isLoginMode, setIsLoginMode] = useState(true);
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -59,7 +60,7 @@ export default function RoleAuthCard({ role, title, subtitle, registerEnabled = 
         return;
       }
 
-      await register(fullName, email, password, role);
+      await register({ firstName, lastName, email, password, role });
       setMessage('Account created. Please sign in.');
       setIsLoginMode(true);
       setPassword('');
@@ -78,14 +79,24 @@ export default function RoleAuthCard({ role, title, subtitle, registerEnabled = 
 
         <form onSubmit={onSubmit} className={styles.form}>
           {!isLoginMode && registerEnabled && (
-            <input
-              className={styles.input}
-              type="text"
-              placeholder="Full name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-            />
+            <>
+              <input
+                className={styles.input}
+                type="text"
+                placeholder="First name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+              />
+              <input
+                className={styles.input}
+                type="text"
+                placeholder="Last name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+              />
+            </>
           )}
 
           <input

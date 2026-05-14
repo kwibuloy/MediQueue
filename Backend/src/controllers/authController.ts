@@ -8,11 +8,28 @@ const supabaseAnonKey = process.env.SUPABASE_ANON_KEY as string;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const register = async (req: Request, res: Response) => {
-    const {email, password, user_first_name, user_last_name} = req.body;
+    const {email, password, firstName, lastName, fullName, role: requestedRole} = req.body;
 
     // Validate input
-    if (!email || !password || !user_first_name || !user_last_name) {
-        return res.status(400).json({error: "email, password, user_first_name, and user_last_name are required"});
+    if (!email || !password) {
+        return res.status(400).json({error: "email and password are required"});
+    }
+
+    const normalizedFirstName = String(firstName || '').trim();
+    const normalizedLastName = String(lastName || '').trim();
+
+    let user_first_name = normalizedFirstName;
+    let user_last_name = normalizedLastName;
+
+    // Backward compatibility for the legacy fullName payload
+    if ((!user_first_name || !user_last_name) && fullName) {
+        const nameParts = String(fullName).trim().split(/\s+/);
+        user_first_name = user_first_name || nameParts.shift() || '';
+        user_last_name = user_last_name || nameParts.join(' ') || '';
+    }
+
+    if (!user_first_name || !user_last_name) {
+        return res.status(400).json({error: "firstName and lastName are required"});
     }
 
     try {
@@ -25,6 +42,11 @@ export const register = async (req: Request, res: Response) => {
         
         if (invitationResult.rows.length > 0) {
             role = 'admin';
+        } else if (requestedRole && requestedRole === 'admin') {
+            // Prevent claiming admin without invitation
+            role = 'patient';
+        } else if (requestedRole) {
+            role = requestedRole;
         }
 
         // Register with Supabase Auth
@@ -40,12 +62,18 @@ export const register = async (req: Request, res: Response) => {
             }
         });
 
-        if(error) return res.status(400).json({error: error.message});
+        if (error) {
+            console.error('Supabase signup error:', error);
+            const statusCode = (error as any)?.status || 500;
+            const message = (error as any)?.message || 'Supabase signup failed';
+            const code = (error as any)?.code || null;
+            return res.status(statusCode).json({ error: message, code });
+        }
 
         // If auth successful, create user entry in database
         if (data.user) {
             const user_id = data.user.id;
-            
+
             const insertUserSql = `
                 INSERT INTO users (user_id, email, user_first_name, user_last_name, role)
                 VALUES ($1, $2, $3, $4, $5)
@@ -53,20 +81,34 @@ export const register = async (req: Request, res: Response) => {
                 SET email = $2, user_first_name = $3, user_last_name = $4, role = $5
                 RETURNING user_id, email, user_first_name, user_last_name, role;
             `;
-            
-            const userInsertResult = await query(insertUserSql, [user_id, email, user_first_name, user_last_name, role]);
-            
-            // If user was an admin invitee, delete the invitation record
-            if (role === 'admin') {
-                const deleteInvitationSql = `DELETE FROM admin_invitations WHERE email = $1`;
-                await query(deleteInvitationSql, [email]);
-            }
 
-            return res.status(200).json({
-                message: "User registered successfully! Check your email for a confirmation link.",
-                user: userInsertResult.rows[0],
-                role: role
-            });
+            try {
+                console.log('Inserting user into DB', { user_id, email, user_first_name, user_last_name, role });
+                const userInsertResult = await query(insertUserSql, [user_id, email, user_first_name, user_last_name, role]);
+
+                // If user was an admin invitee, delete the invitation record
+                if (role === 'admin') {
+                    const deleteInvitationSql = `DELETE FROM admin_invitations WHERE email = $1`;
+                    await query(deleteInvitationSql, [email]);
+                }
+
+                const created = userInsertResult.rows && userInsertResult.rows[0] ? userInsertResult.rows[0] : null;
+
+                if (!created) {
+                    console.error('User insert returned no rows', { user_id, email, user_first_name, user_last_name, role });
+                    return res.status(500).json({ error: 'Database error saving new user' });
+                }
+
+                return res.status(200).json({
+                    message: "User registered successfully! Check your email for a confirmation link.",
+                    user: created,
+                    role: role
+                });
+            } catch (dbErr: unknown) {
+                console.error('Database error inserting user:', dbErr, { sql: insertUserSql, params: [user_id, email, user_first_name, user_last_name, role] });
+                const details = dbErr instanceof Error ? dbErr.message : String(dbErr);
+                return res.status(500).json({ error: 'Database error saving new user', details });
+            }
         }
 
         res.status(200).json({message: "User registered successfully! Check your email for a confirmation link.", user: data.user});
@@ -88,9 +130,17 @@ export const login = async (req: Request, res: Response) => {
 
         if(error) return res.status(401).json({error: "Invalid email or password."});
 
+        const dbUserResult = data.user?.id
+            ? await query(
+                `SELECT user_id, email, user_first_name, user_last_name, role FROM users WHERE user_id = $1 LIMIT 1`,
+                [data.user.id]
+            )
+            : null;
+        const dbUser = dbUserResult?.rows?.[0];
+
         // Fetch user metadata for complete response
         if (data.session) {
-            const userRole = data.user?.user_metadata?.role || 'patient';
+            const userRole = dbUser?.role || data.user?.user_metadata?.role || 'patient';
             return res.status(200).json({
                 message: "Login successful!",
                 session: data.session,
@@ -98,8 +148,8 @@ export const login = async (req: Request, res: Response) => {
                     id: data.user?.id,
                     email: data.user?.email,
                     role: userRole,
-                    user_first_name: data.user?.user_metadata?.user_first_name,
-                    user_last_name: data.user?.user_metadata?.user_last_name
+                    user_first_name: dbUser?.user_first_name || data.user?.user_metadata?.user_first_name,
+                    user_last_name: dbUser?.user_last_name || data.user?.user_metadata?.user_last_name
                 }
             });
         }

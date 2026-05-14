@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction} from "express";
 import {createClient} from "@supabase/supabase-js";
+import { query } from "../config/database.js";
 import jwt from "jsonwebtoken";
 
 const supabaseUrl = process.env.SUPABASE_URL as string;
@@ -21,8 +22,9 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
         return res.status(401).json({error: "Invalid token."});
     }
 
-    const userRole = user.user_metadata?.role;
-    if(!userRole) return res.status(401).json({error: "Role not found in user metadata"});
+    const roleResult = await query(`SELECT role FROM users WHERE user_id = $1 LIMIT 1`, [user.id]);
+    const userRole = roleResult.rows[0]?.role || user.user_metadata?.role;
+    if(!userRole) return res.status(401).json({error: "Role not found for user"});
 
     // Attach user info to request
     // user.id is the UUID

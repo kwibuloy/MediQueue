@@ -9,7 +9,7 @@ export const getUserRole = () => localStorage.getItem(USER_ROLE_KEY);
 export const setAccessToken = (token) => {
   if (token) localStorage.setItem(ACCESS_TOKEN_KEY, token);
 };
-const setUserRole = (role) => {
+export const setUserRole = (role) => {
   if (role) localStorage.setItem(USER_ROLE_KEY, role);
 };
 export const clearAccessToken = () => {
@@ -56,6 +56,14 @@ async function apiFetch(path, options = {}) {
 
 export const getDoctors = () => apiFetch('/doctors');
 
+export const inviteAdmin = (email) =>
+  apiFetch('/admin/invite', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+
+export const getPendingInvitations = () => apiFetch('/admin/invitations');
+
 export const login = async (email, password) => {
   clearAccessToken();
   await supabase.auth.signOut({ scope: 'local' });
@@ -77,7 +85,7 @@ export const login = async (email, password) => {
 
   const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
   const session = refreshed?.session || data?.session;
-  const role = session?.user?.user_metadata?.role;
+  const role = data?.user?.role || session?.user?.user_metadata?.role;
 
   if (refreshError) {
     console.warn('Session refresh failed during login:', refreshError.message);
@@ -92,10 +100,16 @@ export const login = async (email, password) => {
   return { ...data, role };
 };
 
-export const register = (fullName, email, password, role = 'patient') =>
+export const register = ({ firstName, lastName, email, password, role = 'patient' }) =>
   apiFetch('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ fullName, email, password, role }),
+    body: JSON.stringify({ firstName, lastName, email, password, role }),
+  });
+
+export const revokeInvitation = (email) =>
+  apiFetch('/admin/invitations/revoke', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
   });
 
 export const joinQueue = (doctorId) =>
@@ -112,6 +126,18 @@ export const getAdminPatientLogs = (doctorId) =>
 
 export const callNextPatient = (doctorId) =>
   apiFetch(`/admin/call-next/${doctorId}`, { method: 'PATCH' });
+
+export const skipPatient = (doctorId) =>
+  apiFetch(`/admin/skip/${doctorId}`, { method: 'PATCH' });
+
+export const closeQueueForDoctor = (doctorId) =>
+  apiFetch(`/admin/close/${doctorId}`, { method: 'PATCH' });
+
+export const setDoctorAvailability = (doctorId, isAvailable) =>
+  apiFetch(`/admin/doctor-availability/${doctorId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isAvailable }),
+  });
 
 export const getPatientStatus = () =>
   apiFetch('/queue/patient-status');

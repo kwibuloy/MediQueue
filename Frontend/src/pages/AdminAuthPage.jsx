@@ -6,8 +6,9 @@ export default function AdminAuthPage() {
     <RoleAuthCard
       role="admin"
       title="Admin Login"
-      subtitle="Sign in with your admin email and password."
+      subtitle="Sign in or register with your admin email. If invited, registering will grant admin access."
       redirectTo="/admin"
+      registerEnabled={true}
     />
   );
 }

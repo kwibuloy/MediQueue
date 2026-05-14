@@ -4,7 +4,8 @@ import styles from './AuthPanel.module.css';
 
 export default function AuthPanel() {
   const [isLoginMode, setIsLoginMode] = useState(true);
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,7 +31,7 @@ export default function AuthPanel() {
         setMessage('You are logged in. You can now join the queue and check status.');
         setSessionVersion((v) => v + 1);
       } else {
-        await register(fullName, email, password, 'patient');
+        await register({ firstName, lastName, email, password, role: 'patient' });
         setMessage('Registration successful. Please sign in to continue.');
         setIsLoginMode(true);
         setPassword('');
@@ -69,14 +70,24 @@ export default function AuthPanel() {
       {!hasToken && (
         <form onSubmit={handleSubmit} className={styles.form}>
           {!isLoginMode && (
-            <input
-              className={styles.input}
-              type="text"
-              placeholder="Full name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-            />
+            <>
+              <input
+                className={styles.input}
+                type="text"
+                placeholder="First name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+              />
+              <input
+                className={styles.input}
+                type="text"
+                placeholder="Last name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+              />
+            </>
           )}
           <input
             className={styles.input}

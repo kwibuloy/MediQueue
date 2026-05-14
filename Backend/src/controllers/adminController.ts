@@ -20,9 +20,11 @@ export const inviteAdmin = async (req: Request, res: Response) => {
 
         if (existingUserResult.rows.length > 0) {
             const existingUser = existingUserResult.rows[0];
-            if (existingUser.role === 'admin') {
-                return res.status(400).json({ error: 'User is already an admin' });
-            }
+            return res.status(400).json({
+                error: existingUser.role === 'admin'
+                    ? 'User is already an admin'
+                    : 'This email is already registered as a patient and cannot be invited as an admin'
+            });
         }
 
         // Check if invitation already exists
@@ -138,7 +140,7 @@ export const revokeInvitation = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'email is required' });
         }
 
-        const sql = `DELETE FROM admin_invitations WHERE email = $1 RETURNING id, email;`;
+        const sql = `DELETE FROM admin_invitations WHERE email = $1 RETURNING invitation_id, email;`;
         const result = await query(sql, [email]);
 
         if (result.rowCount === 0) {
