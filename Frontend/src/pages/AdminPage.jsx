@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { clearAccessToken, getAccessToken, getUserRole, getDoctors, getAdminQueue, getAdminPatientLogs, callNextPatient, startSession, completeSession, inviteAdmin, getPendingInvitations, revokeInvitation, skipPatient, closeQueueForDoctor, setDoctorAvailability } from '../services/api';
+import { clearAccessToken, getAccessToken, getUserRole, getDoctors, getAdminQueue, getAdminPatientLogs, callNextPatient, startSession, completeSession, inviteAdmin, getPendingInvitations, revokeInvitation, skipPatient, closeQueueForDoctor, setDoctorAvailability, createDoctor, removeDoctor } from '../services/api';
 import { supabase } from '../services/supabaseClient';
 import QueueList from '../components/QueueList';
 import styles from './AdminPage.module.css';
@@ -25,6 +25,15 @@ export default function AdminPage() {
   const [invitations, setInvitations] = useState([]);
   const [invitesLoaded, setInvitesLoaded] = useState(false);
   const [doctorAvailable, setDoctorAvailable] = useState(true);
+  const [doctorForm, setDoctorForm] = useState({
+    doctorFirstName: '',
+    doctorLastName: '',
+    specialization: '',
+    roomNumber: '',
+    isAvailable: true,
+  });
+  const [doctorCreateLoading, setDoctorCreateLoading] = useState(false);
+  const [doctorRemoveLoading, setDoctorRemoveLoading] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [hasToken, setHasToken] = useState(false);
 
@@ -313,6 +322,74 @@ export default function AdminPage() {
     }
   };
 
+  const handleDoctorFieldChange = (field, value) => {
+    setDoctorForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleCreateDoctor = async (e) => {
+    e.preventDefault();
+    setError('');
+    setNotice('');
+    setDoctorCreateLoading(true);
+
+    try {
+      const response = await createDoctor(doctorForm);
+      const createdDoctor = response?.doctor;
+
+      const refreshedDoctors = await getDoctors();
+      setDoctors(refreshedDoctors);
+
+      if (createdDoctor?.doctor_id) {
+        setSelectedDoctorId(String(createdDoctor.doctor_id));
+      }
+
+      setDoctorForm({
+        doctorFirstName: '',
+        doctorLastName: '',
+        specialization: '',
+        roomNumber: '',
+        isAvailable: true,
+      });
+      setNotice('Doctor added successfully.');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDoctorCreateLoading(false);
+    }
+  };
+
+  const handleRemoveDoctor = async () => {
+    if (!selectedDoctorId) return;
+
+    const selectedDoctor = doctors.find((d) => String(d.doctor_id) === String(selectedDoctorId));
+    const selectedDoctorName = selectedDoctor?.doctor_name || `${selectedDoctor?.doctor_first_name || ''} ${selectedDoctor?.doctor_last_name || ''}`.trim() || 'this doctor';
+    const shouldRemove = window.confirm(`Remove Dr. ${selectedDoctorName}? This action cannot be undone.`);
+
+    if (!shouldRemove) return;
+
+    setDoctorRemoveLoading(true);
+    setError('');
+    setNotice('');
+
+    try {
+      await removeDoctor(selectedDoctorId);
+
+      const refreshedDoctors = await getDoctors();
+      setDoctors(refreshedDoctors);
+      setSelectedDoctorId('');
+      setQueueLoaded(false);
+      setLogsLoaded(false);
+      setQueue([]);
+      setPatientLogs([]);
+      setCalledTicket(null);
+      setNotice('Doctor removed successfully.');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDoctorRemoveLoading(false);
+    }
+  };
+
   return (
     <main className={styles.page}>
       {!authChecked ? null : null}
@@ -365,8 +442,67 @@ export default function AdminPage() {
           >
             {loadingQueue ? 'Loading…' : 'Load Queue'}
           </button>
+          <button
+            className={styles.removeDoctorBtn}
+            onClick={handleRemoveDoctor}
+            disabled={!selectedDoctorId || doctorRemoveLoading}
+          >
+            {doctorRemoveLoading ? 'Removing…' : 'Remove Selected Doctor'}
+          </button>
         </div>
         {error && <p className={styles.error}>{error}</p>}
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Add Doctor</h2>
+        <p className={styles.queueCount}>Fill in all required fields to create a doctor profile.</p>
+        <form className={styles.doctorForm} onSubmit={handleCreateDoctor}>
+          <div className={styles.doctorFormGrid}>
+            <input
+              className={styles.inviteInput}
+              type="text"
+              placeholder="First Name"
+              value={doctorForm.doctorFirstName}
+              onChange={(e) => handleDoctorFieldChange('doctorFirstName', e.target.value)}
+              required
+            />
+            <input
+              className={styles.inviteInput}
+              type="text"
+              placeholder="Last Name"
+              value={doctorForm.doctorLastName}
+              onChange={(e) => handleDoctorFieldChange('doctorLastName', e.target.value)}
+              required
+            />
+            <input
+              className={styles.inviteInput}
+              type="text"
+              placeholder="Specialization"
+              value={doctorForm.specialization}
+              onChange={(e) => handleDoctorFieldChange('specialization', e.target.value)}
+              required
+            />
+            <input
+              className={styles.inviteInput}
+              type="text"
+              placeholder="Room Number"
+              value={doctorForm.roomNumber}
+              onChange={(e) => handleDoctorFieldChange('roomNumber', e.target.value)}
+              required
+            />
+          </div>
+          <label className={styles.availabilityCheck}>
+            <input
+              type="checkbox"
+              checked={doctorForm.isAvailable}
+              onChange={(e) => handleDoctorFieldChange('isAvailable', e.target.checked)}
+            />
+            Available for queueing immediately
+          </label>
+          <button className={styles.inviteBtn} type="submit" disabled={doctorCreateLoading}>
+            {doctorCreateLoading ? 'Adding…' : 'Add Doctor'}
+          </button>
+        </form>
       </section>
 
       <section className={styles.section}>

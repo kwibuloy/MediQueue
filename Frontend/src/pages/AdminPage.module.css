@@ -157,6 +157,47 @@
 .loadBtn:hover:not(:disabled) { background: var(--green-hover); }
 .loadBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+.removeDoctorBtn {
+  background: rgba(231, 76, 60, 0.12);
+  color: var(--red);
+  border: 1px solid rgba(231, 76, 60, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.removeDoctorBtn:hover:not(:disabled) {
+  background: rgba(231, 76, 60, 0.18);
+}
+
+.removeDoctorBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.doctorForm {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.doctorFormGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.availabilityCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-muted);
+  font-size: 14px;
+}
+
 .inviteForm {
   display: flex;
   gap: 12px;
@@ -401,6 +442,7 @@
   .hero { padding: 48px 0 40px; }
   .hero::after { display: none; }
   .selectRow { flex-direction: column; }
+  .doctorFormGrid { grid-template-columns: 1fr; }
   .queueHeader { flex-direction: column; }
   .inviteForm { flex-direction: column; }
   .inviteCard { flex-direction: column; align-items: flex-start; }

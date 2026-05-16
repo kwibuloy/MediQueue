@@ -64,6 +64,17 @@ export const inviteAdmin = (email) =>
 
 export const getPendingInvitations = () => apiFetch('/admin/invitations');
 
+export const createDoctor = ({ doctorFirstName, doctorLastName, specialization, roomNumber, isAvailable = true }) =>
+  apiFetch('/admin/doctors', {
+    method: 'POST',
+    body: JSON.stringify({ doctorFirstName, doctorLastName, specialization, roomNumber, isAvailable }),
+  });
+
+export const removeDoctor = (doctorId) =>
+  apiFetch(`/admin/doctors/${doctorId}`, {
+    method: 'DELETE',
+  });
+
 export const login = async (email, password) => {
   clearAccessToken();
   await supabase.auth.signOut({ scope: 'local' });

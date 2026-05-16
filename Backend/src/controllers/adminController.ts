@@ -157,3 +157,118 @@ export const revokeInvitation = async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+
+/**
+ * Create a doctor record.
+ * Required fields: doctor first name, last name, specialization, room number.
+ */
+export const createDoctor = async (req: Request, res: Response) => {
+    try {
+        const {
+            doctorFirstName,
+            doctorLastName,
+            specialization,
+            roomNumber,
+            isAvailable,
+        } = req.body ?? {};
+
+        const normalizedFirstName = String(doctorFirstName ?? '').trim();
+        const normalizedLastName = String(doctorLastName ?? '').trim();
+        const normalizedSpecialization = String(specialization ?? '').trim();
+        const normalizedRoomNumber = String(roomNumber ?? '').trim();
+
+        if (!normalizedFirstName || !normalizedLastName || !normalizedSpecialization || !normalizedRoomNumber) {
+            return res.status(400).json({
+                error: 'doctorFirstName, doctorLastName, specialization, and roomNumber are required',
+            });
+        }
+
+        if (typeof isAvailable !== 'undefined' && typeof isAvailable !== 'boolean') {
+            return res.status(400).json({ error: 'isAvailable must be a boolean when provided' });
+        }
+
+        const sql = `
+            INSERT INTO doctors (
+                doctor_first_name,
+                doctor_last_name,
+                specialization,
+                room_number,
+                is_available
+            )
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING
+                doctor_id,
+                doctor_first_name,
+                doctor_last_name,
+                CONCAT(doctor_first_name, ' ', doctor_last_name) AS doctor_name,
+                specialization,
+                room_number,
+                is_available;
+        `;
+
+        const result = await query(sql, [
+            normalizedFirstName,
+            normalizedLastName,
+            normalizedSpecialization,
+            normalizedRoomNumber,
+            typeof isAvailable === 'boolean' ? isAvailable : true,
+        ]);
+
+        return res.status(201).json({
+            message: 'Doctor created successfully',
+            doctor: result.rows[0],
+        });
+    } catch (err) {
+        console.error('Error creating doctor:', err);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+/**
+ * Remove a doctor record by id.
+ */
+export const deleteDoctor = async (req: Request, res: Response) => {
+    const { doctorId } = req.params;
+
+    try {
+        const activeQueueSql = `
+            SELECT COUNT(*)::int AS active_count
+            FROM queues
+            WHERE doctor_id = $1
+              AND status IN ('waiting', 'called', 'in-consultation');
+        `;
+        const activeQueueResult = await query(activeQueueSql, [doctorId]);
+        const activeCount = activeQueueResult.rows[0]?.active_count ?? 0;
+
+        if (activeCount > 0) {
+            return res.status(409).json({
+                error: 'Cannot remove doctor while there are active queue entries',
+            });
+        }
+
+        const deleteSql = `
+            DELETE FROM doctors
+            WHERE doctor_id = $1
+            RETURNING doctor_id, doctor_first_name, doctor_last_name;
+        `;
+        const result = await query(deleteSql, [doctorId]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Doctor not found' });
+        }
+
+        return res.status(200).json({
+            message: 'Doctor removed successfully',
+            doctor: result.rows[0],
+        });
+    } catch (err: any) {
+        if (err?.code === '23503') {
+            return res.status(409).json({
+                error: 'Cannot remove doctor because related queue records still exist',
+            });
+        }
+
+        console.error('Error removing doctor:', err);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
