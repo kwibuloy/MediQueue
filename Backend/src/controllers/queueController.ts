@@ -3,17 +3,34 @@ import { query } from '../config/database.js';
 
 export const getDoctors = async (req: Request, res: Response) => {
     try {
+        // Include current queue length for today and an estimated wait (10 minutes per patient)
         const result = await query(`
-            SELECT 
-                doctor_id, 
-                doctor_first_name, 
-                doctor_last_name,
-                CONCAT(doctor_first_name, ' ', doctor_last_name) AS doctor_name,
-                specialization, 
-                is_available 
-            FROM doctors
+            SELECT
+                d.doctor_id,
+                d.doctor_first_name,
+                d.doctor_last_name,
+                CONCAT(d.doctor_first_name, ' ', d.doctor_last_name) AS doctor_name,
+                d.specialization,
+                d.is_available,
+                COALESCE(qs.current_queue_length, 0) AS current_queue_length,
+                (COALESCE(qs.current_queue_length, 0) * 10)::int AS estimated_wait_minutes
+            FROM doctors d
+            LEFT JOIN (
+                SELECT
+                    doctor_id,
+                    COUNT(*) FILTER (WHERE status IN ('waiting','called','in-consultation'))::int AS current_queue_length
+                FROM queues
+                WHERE (created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date
+                GROUP BY doctor_id
+            ) qs ON qs.doctor_id = d.doctor_id;
         `);
-        res.json(result.rows);
+
+        res.json(result.rows.map((r: any) => ({
+            ...r,
+            // ensure numeric values are plain numbers (not strings)
+            current_queue_length: Number(r.current_queue_length) || 0,
+            estimated_wait_minutes: Number(r.estimated_wait_minutes) || 0,
+        })));
     } catch (err) {
         console.error('Error fetching doctors:', err);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -186,11 +203,11 @@ export const getPatientStatus = async (req: Request, res: Response) => {
                 queue_id,
                 ticket_number,
                 status,
-                (SELECT COUNT(*) + 1 FROM queues
+                ((SELECT COUNT(*) + 1 FROM queues
                 WHERE doctor_id = q.doctor_id
                 AND status = 'waiting'
                 AND ticket_number < q.ticket_number
-                AND (created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date) AS position_in_queue
+                AND (created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date))::int AS position_in_queue
             FROM queues q
             WHERE user_id = $1
                 AND status IN ('waiting','called')
@@ -318,23 +335,43 @@ export const completeSession = async (req: Request, res: Response) => {
 export const skipCurrentPatient = async (req: Request, res: Response) => {
     const { doctorId } = req.params;
     try {
-        const sql = `
+        // Find the earliest called or in-consultation patient for today
+        const selectSql = `
+            SELECT queue_id, status
+            FROM queues
+            WHERE doctor_id = $1
+              AND status IN ('called', 'in-consultation')
+              AND (created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date
+            ORDER BY ticket_number ASC
+            LIMIT 1;
+        `;
+
+        const candidate = await query(selectSql, [doctorId]);
+
+        if (candidate.rows.length === 0) {
+            return res.status(404).json({ message: 'No called patient to skip' });
+        }
+
+        const { queue_id: queueId, status } = candidate.rows[0];
+
+        if (status === 'in-consultation') {
+            return res.status(400).json({ error: 'Cannot skip patient: consultation already started' });
+        }
+
+        const updateSql = `
             UPDATE queues
             SET status = 'skipped'
-            WHERE queue_id = (
-                SELECT queue_id FROM queues
-                WHERE doctor_id = $1
-                  AND status = 'called'
-                  AND (created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date
-                ORDER BY ticket_number ASC
-                LIMIT 1
-            )
+            WHERE queue_id = $1
+              AND status = 'called'
             RETURNING queue_id, ticket_number, user_id, status;
         `;
-        const result = await query(sql, [doctorId]);
+
+        const result = await query(updateSql, [queueId]);
+
         if (result.rowCount === 0) {
             return res.status(404).json({ message: 'No called patient to skip' });
         }
+
         return res.status(200).json({ message: 'Patient skipped', data: result.rows[0] });
     } catch (err) {
         console.error('Error skipping patient:', err);

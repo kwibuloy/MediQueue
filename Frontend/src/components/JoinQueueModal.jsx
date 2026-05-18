@@ -41,6 +41,19 @@ export default function JoinQueueModal({ doctor, onClose }) {
 
         <p className={styles.sub}>Your account identity is attached automatically from your active session.</p>
 
+        {/* Show current queue length and estimated wait (computed server-side) */}
+        <div className={styles.queueInfo} aria-live="polite">
+          <strong>Current queue:</strong>{' '}
+          {typeof (doctor.current_queue_length ?? doctor.queue_length) === 'number'
+            ? `${doctor.current_queue_length ?? doctor.queue_length} waiting`
+            : 'Unavailable'}
+          {' '}•{' '}
+          <strong>Est. wait:</strong>{' '}
+          {typeof (doctor.estimated_wait_minutes) === 'number'
+            ? `${doctor.estimated_wait_minutes} mins`
+            : (typeof (doctor.estimated_wait_minutes ?? doctor.estimated_wait) === 'string' ? doctor.estimated_wait_minutes : 'N/A')}
+        </div>
+
         {result && (
           <div className={`${styles.resultBox} ${styles[result.type]}`}>
             {result.type === 'success' ? '✓' : '✕'} {result.message}

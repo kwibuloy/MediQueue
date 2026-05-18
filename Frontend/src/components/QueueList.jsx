@@ -26,12 +26,19 @@ export default function QueueList({ queue, onStartSession, onCompleteSession }) 
       {queue.map((patient, i) => {
         const id = patient.queue_id ?? patient.id;
         const isNext = i === 0 && patient.status === 'waiting';
+        const estimatedWait =
+          patient.status === 'waiting'
+            ? `${(i + 1) * 10} mins`
+            : patient.status === 'called'
+              ? 'Now'
+              : 'N/A';
         return (
           <div key={id ?? patient.ticket_number} className={`${styles.item} ${isNext ? styles.next : ''}`}>
             <div className={styles.ticket}>{patient.ticket_number}</div>
             <div className={styles.info}>
               <div className={styles.name}>{patient.patient_name}</div>
               <div className={styles.time}>Arrived {patient.arrival_time}</div>
+              <div className={styles.time}>Est. wait: {estimatedWait}</div>
               {patient.status && <div className={styles.status}>Status: {patient.status}</div>}
             </div>
             <div className={styles.actions}>

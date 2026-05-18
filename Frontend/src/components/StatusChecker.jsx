@@ -60,8 +60,8 @@ export default function StatusChecker() {
   }, [hasToken, handleCheck]);
 
   const estimatedWait =
-    data && data.status === 'waiting' && typeof data.position_in_queue === 'number'
-      ? `${Math.max((data.position_in_queue - 1) * 10, 0)} mins`
+    data && data.status === 'waiting' && Number.isFinite(Number(data.position_in_queue))
+      ? `${Number(data.position_in_queue) * 10} mins`
       : data?.status === 'called'
         ? 'Now'
         : 'N/A';
@@ -103,7 +103,7 @@ export default function StatusChecker() {
               </span>
             </div>
             <div className={styles.stat}>
-              <span className={styles.statLabel}>Est. Wait</span>
+              <span className={styles.statLabel}>Estimated Time</span>
               <span className={styles.statValue}>{estimatedWait}</span>
             </div>
           </div>

@@ -582,7 +582,9 @@ export default function AdminPage() {
                   setNotice('Patient skipped.');
                   await loadQueue();
                 } catch (err) {
-                  setError(err.message);
+                  console.error('Skip failed:', err);
+                  const msg = err?.message || err?.error || (typeof err === 'string' ? err : JSON.stringify(err));
+                  window.alert(msg || 'Failed to skip patient');
                 }
               }}>Skip</button>
               <button className={styles.loadBtn} onClick={async () => {
@@ -598,6 +600,7 @@ export default function AdminPage() {
                 }
               }}>Close Queue</button>
             </div>
+            {/* inline skip error removed: errors are shown via alert() to avoid shifting UI */}
           </div>
 
           {/* Called notif */}
@@ -630,8 +633,7 @@ export default function AdminPage() {
         <p className={styles.queueCount}>Derived from currently available queue data.</p>
         <div className={styles.selectRow}>
           <div className={styles.select}>Patients waiting now: {queue.length}</div>
-          <div className={styles.select}>Average wait: ~{Math.max((queue.length - 1) * 10, 0)} mins</div>
-          <div className={styles.select}>Peak hours: Requires historical queue API</div>
+          <div className={styles.select}>Estimated wait: 10 mins per patient ahead</div>
         </div>
       </section>
 
