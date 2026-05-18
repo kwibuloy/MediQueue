@@ -89,7 +89,7 @@ export default function PatientPage() {
 
   const handleSignOut = async () => {
     clearAccessToken();
-    navigate('/patient/auth', { replace: true });
+    navigate('/login', { replace: true });
   };
 
   return (

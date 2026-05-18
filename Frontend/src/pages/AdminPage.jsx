@@ -258,7 +258,7 @@ export default function AdminPage() {
   const handleSignOut = async () => {
     clearAccessToken();
     await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
-    navigate('/admin/auth', { replace: true });
+    navigate('/login', { replace: true });
   };
 
   const handleToggleAvailability = async () => {

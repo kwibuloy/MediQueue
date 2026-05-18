@@ -96,3 +96,40 @@
   font-size: 14px;
   font-weight: 600;
 }
+
+.inviteSection {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.inviteLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+
+.inviteForm {
+  display: grid;
+  gap: 10px;
+}
+
+.inviteBtn {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  background: var(--bg3);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.inviteBtn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+
+.inviteBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

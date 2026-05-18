@@ -4,9 +4,23 @@ import { clearAccessToken, getAccessToken, getUserRole, login, register } from '
 import { supabase } from '../services/supabaseClient';
 import styles from './RoleAuthCard.module.css';
 
-export default function RoleAuthCard({ role, title, subtitle, registerEnabled = false, redirectTo }) {
+export default function RoleAuthCard({
+  role,
+  title,
+  subtitle,
+  registerTitle,
+  registerSubtitle,
+  registerEnabled = false,
+  redirectTo,
+  forceRegisterMode = false,
+  hideRegisterToggle = false,
+  backLinkTo = '/',
+  backLinkLabel = 'Back to landing page',
+  onRegisterSuccess,
+  footer,
+}) {
   const navigate = useNavigate();
-  const [isLoginMode, setIsLoginMode] = useState(true);
+  const [isLoginMode, setIsLoginMode] = useState(!forceRegisterMode);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -14,6 +28,9 @@ export default function RoleAuthCard({ role, title, subtitle, registerEnabled = 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+
+  const displayTitle = !isLoginMode && registerTitle ? registerTitle : title;
+  const displaySubtitle = !isLoginMode && registerSubtitle ? registerSubtitle : subtitle;
 
   useEffect(() => {
     const token = getAccessToken();
@@ -61,8 +78,11 @@ export default function RoleAuthCard({ role, title, subtitle, registerEnabled = 
       }
 
       await register({ firstName, lastName, email, password, role });
+      onRegisterSuccess?.();
       setMessage('Account created. Please sign in.');
-      setIsLoginMode(true);
+      if (!forceRegisterMode) {
+        setIsLoginMode(true);
+      }
       setPassword('');
     } catch (err) {
       setError(err.message);
@@ -74,8 +94,8 @@ export default function RoleAuthCard({ role, title, subtitle, registerEnabled = 
   return (
     <main className={styles.page}>
       <section className={styles.card}>
-        <h1 className={styles.title}>{title}</h1>
-        <p className={styles.subtitle}>{subtitle}</p>
+        <h1 className={styles.title}>{displayTitle}</h1>
+        <p className={styles.subtitle}>{displaySubtitle}</p>
 
         <form onSubmit={onSubmit} className={styles.form}>
           {!isLoginMode && registerEnabled && (
@@ -123,7 +143,7 @@ export default function RoleAuthCard({ role, title, subtitle, registerEnabled = 
           </button>
         </form>
 
-        {registerEnabled && (
+        {registerEnabled && !hideRegisterToggle && (
           <button
             type="button"
             className={styles.switchBtn}
@@ -137,14 +157,12 @@ export default function RoleAuthCard({ role, title, subtitle, registerEnabled = 
           </button>
         )}
 
-        {!registerEnabled && (
-          <p className={styles.adminNote}>Admin signup is managed by system administrators.</p>
-        )}
+        {footer}
 
         {message && <p className={styles.success}>{message}</p>}
         {error && <p className={styles.error}>{error}</p>}
 
-        <Link className={styles.backLink} to="/">Back to landing page</Link>
+        <Link className={styles.backLink} to={backLinkTo}>{backLinkLabel}</Link>
       </section>
     </main>
   );

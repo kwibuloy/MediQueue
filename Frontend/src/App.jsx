@@ -7,6 +7,7 @@ import PatientPage from './pages/PatientPage';
 import AdminPage from './pages/AdminPage';
 import PatientAuthPage from './pages/PatientAuthPage';
 import AdminAuthPage from './pages/AdminAuthPage';
+import AdminRegisterPage from './pages/AdminRegisterPage';
 import LoginPage from './pages/LoginPage';
 import NotAuthorizedPage from './pages/NotAuthorizedPage';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -69,6 +70,7 @@ export default function App() {
             }
           />
           <Route path="/admin/auth" element={<AdminAuthPage />} />
+          <Route path="/admin/register" element={<AdminRegisterPage />} />
           <Route
             path="/admin"
             element={
