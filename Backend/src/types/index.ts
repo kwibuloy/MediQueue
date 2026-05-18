@@ -58,6 +58,7 @@ export interface QueueHistoryView {
 export interface AdminInvitation {
     invitation_id: string;
     email: string;
+    invitation_code?: string;
     created_at: Date;
     expires_at?: Date;
 }

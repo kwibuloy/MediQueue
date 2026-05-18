@@ -111,10 +111,23 @@ export const login = async (email, password) => {
   return { ...data, role };
 };
 
-export const register = ({ firstName, lastName, email, password, role = 'patient' }) =>
+export const validateInvitationCode = (code) =>
+  apiFetch('/auth/validate-invitation-code', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  });
+
+export const register = ({ firstName, lastName, email, password, role = 'patient', invitationCode }) =>
   apiFetch('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ firstName, lastName, email, password, role }),
+    body: JSON.stringify({
+      firstName,
+      lastName,
+      email,
+      password,
+      role,
+      ...(invitationCode ? { invitationCode } : {}),
+    }),
   });
 
 export const revokeInvitation = (email) =>

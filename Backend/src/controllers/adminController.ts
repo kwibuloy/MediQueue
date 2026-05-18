@@ -1,6 +1,16 @@
 import { Request, Response } from 'express';
 import { query } from '../config/database.js';
+import { sendAdminInvitationEmail } from '../services/emailService.js';
+import { createInvitation } from '../utils/invitation.js';
 
+async function inviteAndEmail(email: string) {
+    const invitation = await createInvitation(email);
+    await sendAdminInvitationEmail({
+        to: email,
+        invitationCode: invitation.invitation_code,
+    });
+    return invitation;
+}
 
 export const inviteAdmin = async (req: Request, res: Response) => {
     try {
@@ -10,8 +20,10 @@ export const inviteAdmin = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'email is required' });
         }
 
-        const existingUserSql = `SELECT user_id, role FROM users WHERE email = $1`;
-        const existingUserResult = await query(existingUserSql, [email]);
+        const normalizedEmail = String(email).trim().toLowerCase();
+
+        const existingUserSql = `SELECT user_id, role FROM users WHERE LOWER(email) = $1`;
+        const existingUserResult = await query(existingUserSql, [normalizedEmail]);
 
         if (existingUserResult.rows.length > 0) {
             const existingUser = existingUserResult.rows[0];
@@ -22,28 +34,34 @@ export const inviteAdmin = async (req: Request, res: Response) => {
             });
         }
 
-        const existingInvitationSql = `SELECT invitation_id FROM admin_invitations WHERE email = $1`;
-        const existingInvitationResult = await query(existingInvitationSql, [email]);
+        const existingInvitationSql = `SELECT invitation_id FROM admin_invitations WHERE LOWER(email) = $1`;
+        const existingInvitationResult = await query(existingInvitationSql, [normalizedEmail]);
 
         if (existingInvitationResult.rows.length > 0) {
             return res.status(400).json({ error: 'Invitation already exists for this email' });
         }
 
-        const invitationSql = `
-            INSERT INTO admin_invitations (email)
-            VALUES ($1)
-            RETURNING invitation_id, email, created_at, expires_at;
-        `;
-        
-        const invitationResult = await query(invitationSql, [email]);
+        const invitation = await inviteAndEmail(normalizedEmail);
 
         return res.status(201).json({
-            message: 'Admin invitation created successfully',
-            invitation: invitationResult.rows[0]
+            message: 'Admin invitation created and email sent',
+            invitation: {
+                invitation_id: invitation.invitation_id,
+                email: invitation.email,
+                created_at: invitation.created_at,
+                expires_at: invitation.expires_at,
+            },
         });
 
     } catch (err) {
         console.error('Error creating admin invitation:', err);
+        const message = err instanceof Error ? err.message : 'Internal Server Error';
+        if (message.includes('RESEND_API_KEY') || message.includes('Failed to send')) {
+            return res.status(503).json({ error: message });
+        }
+        if ((err as { code?: string })?.code === '23505') {
+            return res.status(409).json({ error: 'Invitation code conflict. Please try again.' });
+        }
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
@@ -75,37 +93,42 @@ export const getPendingInvitations = async (req: Request, res: Response) => {
 
 export const resendInvitation = async (req: Request, res: Response) => {
     try {
-        const { email, doctor_id } = req.body;
+        const { email } = req.body;
 
         if (!email) {
             return res.status(400).json({ error: 'email is required' });
         }
 
-        const userCheckSql = `SELECT user_id FROM users WHERE email = $1`;
-        const userCheckResult = await query(userCheckSql, [email]);
+        const normalizedEmail = String(email).trim().toLowerCase();
+
+        const userCheckSql = `SELECT user_id FROM users WHERE LOWER(email) = $1`;
+        const userCheckResult = await query(userCheckSql, [normalizedEmail]);
 
         if (userCheckResult.rows.length > 0) {
             return res.status(400).json({ error: 'User has already signed up. Cannot resend invitation.' });
         }
 
-        const deleteInvitationSql = `DELETE FROM admin_invitations WHERE email = $1`;
-        await query(deleteInvitationSql, [email]);
+        const deleteInvitationSql = `DELETE FROM admin_invitations WHERE LOWER(email) = $1`;
+        await query(deleteInvitationSql, [normalizedEmail]);
 
-        const invitationSql = `
-            INSERT INTO admin_invitations (email)
-            VALUES ($1)
-            RETURNING invitation_id, email, created_at, expires_at;
-        `;
-        
-        const invitationResult = await query(invitationSql, [email]);
+        const invitation = await inviteAndEmail(normalizedEmail);
 
         return res.status(200).json({
             message: 'Invitation resent successfully',
-            invitation: invitationResult.rows[0]
+            invitation: {
+                invitation_id: invitation.invitation_id,
+                email: invitation.email,
+                created_at: invitation.created_at,
+                expires_at: invitation.expires_at,
+            },
         });
 
     } catch (err) {
         console.error('Error resending invitation:', err);
+        const message = err instanceof Error ? err.message : 'Internal Server Error';
+        if (message.includes('RESEND_API_KEY') || message.includes('Failed to send')) {
+            return res.status(503).json({ error: message });
+        }
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
@@ -118,8 +141,9 @@ export const revokeInvitation = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'email is required' });
         }
 
-        const sql = `DELETE FROM admin_invitations WHERE email = $1 RETURNING invitation_id, email;`;
-        const result = await query(sql, [email]);
+        const normalizedEmail = String(email).trim().toLowerCase();
+        const sql = `DELETE FROM admin_invitations WHERE LOWER(email) = $1 RETURNING invitation_id, email;`;
+        const result = await query(sql, [normalizedEmail]);
 
         if (result.rowCount === 0) {
             return res.status(404).json({ error: 'Invitation not found' });

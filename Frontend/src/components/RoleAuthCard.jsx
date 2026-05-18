@@ -18,12 +18,14 @@ export default function RoleAuthCard({
   backLinkLabel = 'Back to landing page',
   onRegisterSuccess,
   footer,
+  invitationCode,
+  defaultEmail = '',
 }) {
   const navigate = useNavigate();
   const [isLoginMode, setIsLoginMode] = useState(!forceRegisterMode);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(defaultEmail);
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -77,7 +79,14 @@ export default function RoleAuthCard({
         return;
       }
 
-      await register({ firstName, lastName, email, password, role });
+      await register({
+        firstName,
+        lastName,
+        email,
+        password,
+        role,
+        invitationCode,
+      });
       onRegisterSuccess?.();
       setMessage('Account created. Please sign in.');
       if (!forceRegisterMode) {

@@ -1,18 +1,61 @@
 import {Request, Response} from "express";
 import {createClient} from "@supabase/supabase-js";
 import { query } from "../config/database.js";
+import {
+    deleteInvitationByCode,
+    findInvitationByCode,
+    isInvitationExpired,
+} from "../utils/invitation.js";
 
 const supabaseUrl = process.env.SUPABASE_URL as string;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY as string;
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+export const validateInvitationCode = async (req: Request, res: Response) => {
+    const { code } = req.body;
+
+    if (!code || typeof code !== 'string') {
+        return res.status(400).json({ error: 'Invitation code is required' });
+    }
+
+    try {
+        const invitation = await findInvitationByCode(code);
+
+        if (!invitation) {
+            return res.status(403).json({ error: 'Invalid invitation code' });
+        }
+
+        if (isInvitationExpired(invitation.expires_at)) {
+            return res.status(403).json({ error: 'Invitation has expired' });
+        }
+
+        return res.status(200).json({
+            valid: true,
+            email: invitation.email,
+        });
+    } catch (err) {
+        console.error('Error validating invitation code:', err);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
 export const register = async (req: Request, res: Response) => {
-    const {email, password, firstName, lastName, fullName, role: requestedRole} = req.body;
+    const {
+        email,
+        password,
+        firstName,
+        lastName,
+        fullName,
+        role: requestedRole,
+        invitationCode,
+    } = req.body;
 
     if (!email || !password) {
         return res.status(400).json({error: "email and password are required"});
     }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
 
     const normalizedFirstName = String(firstName || '').trim();
     const normalizedLastName = String(lastName || '').trim();
@@ -32,21 +75,35 @@ export const register = async (req: Request, res: Response) => {
 
     try {
         let role = 'patient';
-        let doctor_id = null;
-        
-        const invitationCheckSql = `SELECT invitation_id FROM admin_invitations WHERE email = $1`;
-        const invitationResult = await query(invitationCheckSql, [email]);
-        
-        if (invitationResult.rows.length > 0) {
+
+        if (requestedRole === 'admin') {
+            if (!invitationCode || typeof invitationCode !== 'string') {
+                return res.status(403).json({ error: 'A valid invitation code is required for admin registration' });
+            }
+
+            const invitation = await findInvitationByCode(invitationCode);
+
+            if (!invitation) {
+                return res.status(403).json({ error: 'Invalid invitation code' });
+            }
+
+            if (isInvitationExpired(invitation.expires_at)) {
+                return res.status(403).json({ error: 'Invitation has expired' });
+            }
+
+            if (invitation.email.toLowerCase() !== normalizedEmail) {
+                return res.status(403).json({
+                    error: 'This invitation code is not valid for the email address provided',
+                });
+            }
+
             role = 'admin';
-        } else if (requestedRole && requestedRole === 'admin') {
-            role = 'patient';
         } else if (requestedRole) {
             role = requestedRole;
         }
 
         const {data, error} = await supabase.auth.signUp({
-            email,
+            email: normalizedEmail,
             password,
             options: {
                 data: {
@@ -77,19 +134,17 @@ export const register = async (req: Request, res: Response) => {
             `;
 
             try {
-                console.log('Inserting user into DB', { user_id, email, user_first_name, user_last_name, role });
-                const userInsertResult = await query(insertUserSql, [user_id, email, user_first_name, user_last_name, role]);
+                console.log('Inserting user into DB', { user_id, email: normalizedEmail, user_first_name, user_last_name, role });
+                const userInsertResult = await query(insertUserSql, [user_id, normalizedEmail, user_first_name, user_last_name, role]);
 
-                // If user was an admin invitee, delete the invitation record
-                if (role === 'admin') {
-                    const deleteInvitationSql = `DELETE FROM admin_invitations WHERE email = $1`;
-                    await query(deleteInvitationSql, [email]);
+                if (role === 'admin' && invitationCode) {
+                    await deleteInvitationByCode(invitationCode);
                 }
 
                 const created = userInsertResult.rows && userInsertResult.rows[0] ? userInsertResult.rows[0] : null;
 
                 if (!created) {
-                    console.error('User insert returned no rows', { user_id, email, user_first_name, user_last_name, role });
+                    console.error('User insert returned no rows', { user_id, email: normalizedEmail, user_first_name, user_last_name, role });
                     return res.status(500).json({ error: 'Database error saving new user' });
                 }
 
@@ -99,7 +154,7 @@ export const register = async (req: Request, res: Response) => {
                     role: role
                 });
             } catch (dbErr: unknown) {
-                console.error('Database error inserting user:', dbErr, { sql: insertUserSql, params: [user_id, email, user_first_name, user_last_name, role] });
+                console.error('Database error inserting user:', dbErr, { sql: insertUserSql, params: [user_id, normalizedEmail, user_first_name, user_last_name, role] });
                 const details = dbErr instanceof Error ? dbErr.message : String(dbErr);
                 return res.status(500).json({ error: 'Database error saving new user', details });
             }
