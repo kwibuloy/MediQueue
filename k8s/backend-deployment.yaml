@@ -1,12 +1,3 @@
-# Appendix: API Deployment (Pods + ReplicaSet managed by Deployment)
-#
-# Components: Deployment -> ReplicaSet -> Pod(s)
-# Apply after Secrets and before/with Services:
-#   kubectl apply -f k8s/backend-deployment.yaml
-#
-# Purpose: runs the Express API with configurable replicas, rolling updates,
-# and probes so Kubernetes can restart unhealthy Pods (self-healing).
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:

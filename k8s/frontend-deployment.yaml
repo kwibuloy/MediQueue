@@ -1,10 +1,3 @@
-# Appendix: frontend Deployment (nginx serving Vite build)
-#
-# Apply: kubectl apply -f k8s/frontend-deployment.yaml
-#
-# Purpose: serves static SPA assets; nginx proxies /api to mediqueue-backend-svc.
-# VITE_API_URL=/api keeps API calls same-origin via the NodePort Service.
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
