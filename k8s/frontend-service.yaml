@@ -1,0 +1,44 @@
+# Appendix: frontend Service
+
+#
+
+# Apply: kubectl apply -f k8s/frontend-service.yaml
+
+#
+
+# Purpose: NodePort exposes nginx so the browser hits one URL for UI + /api.
+
+# Open http://localhost:30080 (Docker Desktop Kubernetes).
+
+
+
+apiVersion: v1
+
+kind: Service
+
+metadata:
+
+  name: mediqueue-frontend-svc
+
+  labels:
+
+    app: mediqueue-frontend
+
+spec:
+
+  type: NodePort
+
+  selector:
+
+    app: mediqueue-frontend
+
+  ports:
+
+    - name: http
+
+      port: 80
+
+      targetPort: http
+
+      nodePort: 30080
+

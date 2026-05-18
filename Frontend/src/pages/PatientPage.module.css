@@ -4,7 +4,7 @@
   padding: 0 24px 100px;
 }
 
-/* Hero */
+
 .hero {
   padding: 72px 0 56px;
   border-bottom: 1px solid var(--border);
@@ -103,7 +103,6 @@
   line-height: 1.75;
 }
 
-/* Sections */
 .section { margin-bottom: 56px; }
 
 .sectionHeader {
@@ -185,7 +184,7 @@
   .hero::after { display: none; }
 }
 
-/* History styles */
+
 .historyItem {
   display: flex;
   align-items: center;

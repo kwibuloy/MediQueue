@@ -26,18 +26,11 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
     const userRole = roleResult.rows[0]?.role || user.user_metadata?.role;
     if(!userRole) return res.status(401).json({error: "Role not found for user"});
 
-    // Attach user info to request
-    // user.id is the UUID
-    // user.sub is also the UUID (standardized JWT claim)
     (req as any).user = user;
     (req as any).userRole = userRole;
     next();
 };
 
-/**
- * Middleware to require a specific role
- * Usage: router.get('/admin-only', authenticateUser, requireRole('admin'), handler)
- */
 export const requireRole = (requiredRole: string) => {
     return (req: Request, res: Response, next: NextFunction) => {
         const userRole = (req as any).userRole;
@@ -54,10 +47,6 @@ export const requireRole = (requiredRole: string) => {
     };
 };
 
-/**
- * Middleware to require one of multiple roles
- * Usage: router.get('/admin-or-doctor', authenticateUser, requireRoles(['admin', 'doctor']), handler)
- */
 export const requireRoles = (allowedRoles: string[]) => {
     return (req: Request, res: Response, next: NextFunction) => {
         const userRole = (req as any).userRole;

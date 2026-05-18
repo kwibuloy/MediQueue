@@ -1,0 +1,69 @@
+# Appendix: API Deployment (Pods + ReplicaSet managed by Deployment)
+#
+# Components: Deployment -> ReplicaSet -> Pod(s)
+# Apply after Secrets and before/with Services:
+#   kubectl apply -f k8s/backend-deployment.yaml
+#
+# Purpose: runs the Express API with configurable replicas, rolling updates,
+# and probes so Kubernetes can restart unhealthy Pods (self-healing).
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mediqueue-backend
+  labels:
+    app: mediqueue-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mediqueue-backend
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: mediqueue-backend
+    spec:
+      containers:
+        - name: api
+          image: mediqueue-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5000
+          env:
+            - name: PORT
+              value: "5000"
+            - name: Database_URI
+              valueFrom:
+                secretKeyRef:
+                  name: database-credentials
+                  key: Database_URI
+            - name: SUPABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-credentials
+                  key: SUPABASE_URL
+            - name: SUPABASE_ANON_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-credentials
+                  key: SUPABASE_ANON_KEY
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

@@ -131,7 +131,7 @@ export default function AdminPage() {
     loadInvitations();
   }, [hasToken, loadInvitations]);
 
-  // loadQueue supports a silent option so realtime updates don't show a global loading overlay
+
   const loadQueue = useCallback(async (opts = { silent: false }) => {
     if (!selectedDoctorId) return;
     if (!opts.silent) setLoadingQueue(true);
@@ -166,11 +166,11 @@ export default function AdminPage() {
   useEffect(() => {
     if (!selectedDoctorId || !hasToken) return;
 
-    // initial fetch (show loading spinner)
+
     loadQueue();
     loadPatientLogs();
 
-    // throttled/scheduled fetch helper so we don't hammer the API during bursts
+
     const scheduledRef = { timer: null, last: 0 };
     const scheduleFetch = () => {
       const now = Date.now();
@@ -191,25 +191,22 @@ export default function AdminPage() {
       }
     };
 
-    // subscribe to Supabase realtime changes for this doctor's queue
+
     const channel = supabase
       .channel(`public:queues:doctor:${selectedDoctorId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'queues', filter: `doctor_id=eq.${selectedDoctorId}` },
         (payload) => {
-          // silent/throttled refresh — update state in background without showing global loading
           scheduleFetch();
         }
       )
       .subscribe();
 
     return () => {
-      // cleanup subscription and any pending timer
       try {
         supabase.removeChannel(channel);
       } catch (e) {
-        // fallback if removeChannel isn't available
         if (channel && typeof channel.unsubscribe === 'function') channel.unsubscribe();
       }
       if (scheduledRef.timer) clearTimeout(scheduledRef.timer);
@@ -240,7 +237,6 @@ export default function AdminPage() {
     try {
       setError('');
       await startSession(queueId);
-      // refresh queue to reflect status change
       const data = await getAdminQueue(selectedDoctorId);
       setQueue(data);
     } catch (err) {
@@ -252,7 +248,6 @@ export default function AdminPage() {
     try {
       setError('');
       await completeSession(queueId);
-      // refresh queue to reflect status change
       const data = await getAdminQueue(selectedDoctorId);
       setQueue(data);
     } catch (err) {

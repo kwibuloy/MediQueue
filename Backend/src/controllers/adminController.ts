@@ -1,20 +1,15 @@
 import { Request, Response } from 'express';
 import { query } from '../config/database.js';
 
-/**
- * Create an admin invitation for a specific email
- * This endpoint should only be accessible by existing admins
- */
+
 export const inviteAdmin = async (req: Request, res: Response) => {
     try {
         const { email } = req.body;
 
-        // Validate input
         if (!email) {
             return res.status(400).json({ error: 'email is required' });
         }
 
-        // Check if user already exists in database
         const existingUserSql = `SELECT user_id, role FROM users WHERE email = $1`;
         const existingUserResult = await query(existingUserSql, [email]);
 
@@ -27,7 +22,6 @@ export const inviteAdmin = async (req: Request, res: Response) => {
             });
         }
 
-        // Check if invitation already exists
         const existingInvitationSql = `SELECT invitation_id FROM admin_invitations WHERE email = $1`;
         const existingInvitationResult = await query(existingInvitationSql, [email]);
 
@@ -35,9 +29,6 @@ export const inviteAdmin = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Invitation already exists for this email' });
         }
 
-        // Verify doctor exists
-
-        // Create invitation
         const invitationSql = `
             INSERT INTO admin_invitations (email)
             VALUES ($1)
@@ -57,10 +48,6 @@ export const inviteAdmin = async (req: Request, res: Response) => {
     }
 };
 
-/**
- * Get all pending admin invitations
- * This endpoint should only be accessible by existing admins
- */
 export const getPendingInvitations = async (req: Request, res: Response) => {
     try {
         const sql = `
@@ -86,9 +73,6 @@ export const getPendingInvitations = async (req: Request, res: Response) => {
     }
 };
 
-/**
- * Resend an admin invitation (delete and recreate if user hasn't signed up yet)
- */
 export const resendInvitation = async (req: Request, res: Response) => {
     try {
         const { email, doctor_id } = req.body;
@@ -97,7 +81,6 @@ export const resendInvitation = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'email is required' });
         }
 
-        // Check if user has already signed up
         const userCheckSql = `SELECT user_id FROM users WHERE email = $1`;
         const userCheckResult = await query(userCheckSql, [email]);
 
@@ -105,11 +88,9 @@ export const resendInvitation = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'User has already signed up. Cannot resend invitation.' });
         }
 
-        // Delete existing invitation if any
         const deleteInvitationSql = `DELETE FROM admin_invitations WHERE email = $1`;
         await query(deleteInvitationSql, [email]);
 
-        // Create new invitation
         const invitationSql = `
             INSERT INTO admin_invitations (email)
             VALUES ($1)
@@ -129,9 +110,6 @@ export const resendInvitation = async (req: Request, res: Response) => {
     }
 };
 
-/**
- * Delete/revoke an admin invitation
- */
 export const revokeInvitation = async (req: Request, res: Response) => {
     try {
         const { email } = req.body;
@@ -158,10 +136,6 @@ export const revokeInvitation = async (req: Request, res: Response) => {
     }
 };
 
-/**
- * Create a doctor record.
- * Required fields: doctor first name, last name, specialization, room number.
- */
 export const createDoctor = async (req: Request, res: Response) => {
     try {
         const {
@@ -224,9 +198,6 @@ export const createDoctor = async (req: Request, res: Response) => {
     }
 };
 
-/**
- * Remove a doctor record by id.
- */
 export const deleteDoctor = async (req: Request, res: Response) => {
     const { doctorId } = req.params;
 

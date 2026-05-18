@@ -1,0 +1,21 @@
+# Appendix: API Service (ClusterIP — internal only)
+#
+# Apply: kubectl apply -f k8s/backend-service.yaml
+#
+# Purpose: gives backend Pods a DNS name (mediqueue-backend-svc) for nginx
+# in the frontend Pods to proxy /api traffic without exposing the API directly.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mediqueue-backend-svc
+  labels:
+    app: mediqueue-backend
+spec:
+  type: ClusterIP
+  selector:
+    app: mediqueue-backend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

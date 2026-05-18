@@ -6,7 +6,6 @@ export default function JoinQueueModal({ doctor, onClose }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null); // { type: 'success'|'error', message }
 
-  // Close on Escape key
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handler);

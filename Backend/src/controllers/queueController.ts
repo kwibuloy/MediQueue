@@ -3,7 +3,6 @@ import { query } from '../config/database.js';
 
 export const getDoctors = async (req: Request, res: Response) => {
     try {
-        // Include current queue length for today and an estimated wait (10 minutes per patient)
         const result = await query(`
             SELECT
                 d.doctor_id,
@@ -27,7 +26,6 @@ export const getDoctors = async (req: Request, res: Response) => {
 
         res.json(result.rows.map((r: any) => ({
             ...r,
-            // ensure numeric values are plain numbers (not strings)
             current_queue_length: Number(r.current_queue_length) || 0,
             estimated_wait_minutes: Number(r.estimated_wait_minutes) || 0,
         })));
@@ -40,7 +38,7 @@ export const getDoctors = async (req: Request, res: Response) => {
 export const joinQueue = async (req: Request, res: Response) => {
     try {
         const {doctorId } = req.body;
-        const patientId = (req as any).user?.id || (req as any).user?.sub; // UUID from Supabase Auth
+        const patientId = (req as any).user?.id || (req as any).user?.sub; 
         
         if (!patientId || !doctorId) {
             return res.status(400).json({ error: 'Patient ID and doctor ID are required' });
@@ -197,7 +195,6 @@ export const getPatientStatus = async (req: Request, res: Response) => {
     const patientId = (req as any).user?.id || (req as any).user?.sub; // UUID from Supabase Auth
 
     try {
-        // Only consider active statuses for patient view. Cancelled/done entries are treated as no active queue.
         const sql = `
             SELECT
                 queue_id,
@@ -217,10 +214,8 @@ export const getPatientStatus = async (req: Request, res: Response) => {
         `;
 
         const result = await query(sql, [patientId]);
-        // console.log('Query result:', result.rows);
 
         if (result.rows.length === 0) {
-            // return 200 with an empty object so frontend doesn't treat this as an error
             return res.status(200).json({});
         }
 
@@ -232,7 +227,7 @@ export const getPatientStatus = async (req: Request, res: Response) => {
 }
 
 export const cancelQueue = async (req: Request, res: Response) => {
-    const patientId = (req as any).user?.id || (req as any).user?.sub; // UUID from Supabase Auth
+    const patientId = (req as any).user?.id || (req as any).user?.sub; 
     try {
         const sql = `
             UPDATE queues
@@ -249,7 +244,6 @@ export const cancelQueue = async (req: Request, res: Response) => {
         `;
         const result = await query(sql, [patientId]);
         if (result.rowCount === 0) {
-            // no active waiting entry found; return success so frontend can clear view
             return res.status(200).json({ message: 'No active queue entry found for this user today', data: null });
         }
         return res.status(200).json({ message: 'Queue cancelled successfully', data: result.rows[0] });
@@ -260,7 +254,7 @@ export const cancelQueue = async (req: Request, res: Response) => {
 }
 
 export const getQueueHistory = async (req: Request, res: Response) => {
-    const patientId = (req as any).user?.id || (req as any).user?.sub; // UUID from Supabase Auth
+    const patientId = (req as any).user?.id || (req as any).user?.sub; 
     try {
         console.log('getQueueHistory called for patientId=', patientId);
         const sql = `
@@ -291,7 +285,6 @@ export const getQueueHistory = async (req: Request, res: Response) => {
 export const startSession = async (req: Request, res: Response) => {
     const { queueId } = req.params;
     try {
-        // Move from 'called' to 'in-consultation'
         const sql = `
             UPDATE queues
             SET status = 'in-consultation'
@@ -313,7 +306,6 @@ export const startSession = async (req: Request, res: Response) => {
 export const completeSession = async (req: Request, res: Response) => {
     const { queueId } = req.params;
     try {
-        // Move from 'in-consultation' to 'served'
         const sql = `
             UPDATE queues
             SET status = 'served'
@@ -335,7 +327,6 @@ export const completeSession = async (req: Request, res: Response) => {
 export const skipCurrentPatient = async (req: Request, res: Response) => {
     const { doctorId } = req.params;
     try {
-        // Find the earliest called or in-consultation patient for today
         const selectSql = `
             SELECT queue_id, status
             FROM queues

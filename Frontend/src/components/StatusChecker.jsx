@@ -8,7 +8,7 @@ const STATUS_LABELS = {
   done: 'Done',
 };
 
-/** Stable string so unchanged polls keep the same `data` reference (avoids visual flicker). */
+
 function queueStatusFingerprint(row) {
   if (!row || typeof row !== 'object' || Object.keys(row).length === 0) return '__empty__';
   return `${row.queue_id}|${row.ticket_number}|${row.status}|${row.position_in_queue}`;

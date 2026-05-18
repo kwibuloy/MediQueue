@@ -10,7 +10,6 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export const register = async (req: Request, res: Response) => {
     const {email, password, firstName, lastName, fullName, role: requestedRole} = req.body;
 
-    // Validate input
     if (!email || !password) {
         return res.status(400).json({error: "email and password are required"});
     }
@@ -21,7 +20,6 @@ export const register = async (req: Request, res: Response) => {
     let user_first_name = normalizedFirstName;
     let user_last_name = normalizedLastName;
 
-    // Backward compatibility for the legacy fullName payload
     if ((!user_first_name || !user_last_name) && fullName) {
         const nameParts = String(fullName).trim().split(/\s+/);
         user_first_name = user_first_name || nameParts.shift() || '';
@@ -33,7 +31,6 @@ export const register = async (req: Request, res: Response) => {
     }
 
     try {
-        // Check if email has a pending admin invitation
         let role = 'patient';
         let doctor_id = null;
         
@@ -43,13 +40,11 @@ export const register = async (req: Request, res: Response) => {
         if (invitationResult.rows.length > 0) {
             role = 'admin';
         } else if (requestedRole && requestedRole === 'admin') {
-            // Prevent claiming admin without invitation
             role = 'patient';
         } else if (requestedRole) {
             role = requestedRole;
         }
 
-        // Register with Supabase Auth
         const {data, error} = await supabase.auth.signUp({
             email,
             password,
@@ -70,7 +65,6 @@ export const register = async (req: Request, res: Response) => {
             return res.status(statusCode).json({ error: message, code });
         }
 
-        // If auth successful, create user entry in database
         if (data.user) {
             const user_id = data.user.id;
 
@@ -138,7 +132,6 @@ export const login = async (req: Request, res: Response) => {
             : null;
         const dbUser = dbUserResult?.rows?.[0];
 
-        // Fetch user metadata for complete response
         if (data.session) {
             const userRole = dbUser?.role || data.user?.user_metadata?.role || 'patient';
             return res.status(200).json({
