@@ -16,6 +16,17 @@ import { supabase } from './services/supabaseClient';
 
 export default function App() {
   useEffect(() => {
+    const DEPLOYMENT_VERSION_KEY = 'app_deployment_version';
+    const CURRENT_VERSION = new Date().toISOString().split('T')[0];
+    const storedVersion = localStorage.getItem(DEPLOYMENT_VERSION_KEY);
+
+    if (storedVersion !== CURRENT_VERSION) {
+      localStorage.clear();
+      localStorage.setItem(DEPLOYMENT_VERSION_KEY, CURRENT_VERSION);
+    }
+  }, []);
+
+  useEffect(() => {
     let active = true;
 
     const syncAuthState = async () => {

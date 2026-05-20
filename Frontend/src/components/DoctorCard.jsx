@@ -16,6 +16,7 @@ function DoctorCard({ doctor, onClick }) {
       <div className={styles.name}>Dr. {doctor.doctor_name || `${doctor.doctor_first_name || ''} ${doctor.doctor_last_name || ''}`.trim() || doctor.name}</div>
       <div className={styles.spec}>{doctor.specialization || 'General Practitioner'}</div>
       <div className={styles.meta}>Clinic: {clinicName}</div>
+      {doctor.room_number && <div className={styles.meta}>Room: {doctor.room_number}</div>}
       <div className={styles.meta}>
         Queue: {queueLength === null ? 'Unavailable' : `${queueLength} waiting`}
       </div>
@@ -51,6 +52,7 @@ function areDoctorPropsEqual(prev, next) {
   const clinicA = a.clinic || a.clinic_name || '';
   const clinicB = b.clinic || b.clinic_name || '';
   if (clinicA !== clinicB) return false;
+  if ((a.room_number || '') !== (b.room_number || '')) return false;
   return true;
 }
 

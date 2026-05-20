@@ -1,12 +1,13 @@
+import 'dotenv/config';
 import { Resend } from 'resend';
 
-const resendApiKey = process.env.RESEND_API_KEY;
 const emailFrom = process.env.EMAIL_FROM || 'onboarding@resend.dev';
 const appUrl = (process.env.APP_URL || 'http://localhost:5173').replace(/\/$/, '');
 
 let resendClient: Resend | null = null;
 
 function getResendClient(): Resend {
+    const resendApiKey = process.env.RESEND_API_KEY;
     if (!resendApiKey) {
         throw new Error('RESEND_API_KEY is not configured');
     }

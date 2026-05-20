@@ -11,6 +11,7 @@ export const getDoctors = async (req: Request, res: Response) => {
                 CONCAT(d.doctor_first_name, ' ', d.doctor_last_name) AS doctor_name,
                 d.specialization,
                 d.is_available,
+                d.room_number,
                 COALESCE(qs.current_queue_length, 0) AS current_queue_length,
                 (COALESCE(qs.current_queue_length, 0) * 10)::int AS estimated_wait_minutes
             FROM doctors d
@@ -192,24 +193,33 @@ export const callNextPatient = async (req: Request, res: Response) => {
 }
 
 export const getPatientStatus = async (req: Request, res: Response) => {
-    const patientId = (req as any).user?.id || (req as any).user?.sub; // UUID from Supabase Auth
+    const patientId = (req as any).user?.id || (req as any).user?.sub;
+
+    if (!patientId) {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
 
     try {
         const sql = `
             SELECT
-                queue_id,
-                ticket_number,
-                status,
-                ((SELECT COUNT(*) + 1 FROM queues
-                WHERE doctor_id = q.doctor_id
-                AND status = 'waiting'
-                AND ticket_number < q.ticket_number
-                AND (created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date))::int AS position_in_queue
+                q.queue_id,
+                q.ticket_number,
+                q.status,
+                d.room_number,
+                (
+                    SELECT COUNT(*)::int + 1
+                    FROM queues q2
+                    WHERE q2.doctor_id = q.doctor_id
+                      AND q2.status = 'waiting'
+                      AND q2.ticket_number < q.ticket_number
+                      AND (q2.created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date
+                ) AS position_in_queue
             FROM queues q
-            WHERE user_id = $1
-                AND status IN ('waiting','called')
-                AND (created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date
-            ORDER BY created_at DESC
+            LEFT JOIN doctors d ON q.doctor_id = d.doctor_id
+            WHERE q.user_id = $1
+              AND q.status IN ('waiting', 'called')
+              AND (q.created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date
+            ORDER BY q.created_at DESC
             LIMIT 1;
         `;
 

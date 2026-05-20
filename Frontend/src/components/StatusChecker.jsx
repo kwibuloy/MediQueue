@@ -137,7 +137,7 @@ export default function StatusChecker() {
           </div>
           {data.status === 'called' && (
             <div className={styles.calledAlert}>
-              🔔 It's your turn! Please proceed to the doctor's room.
+              🔔 It's your turn! Please proceed to{data.room_number ? ` Room ${data.room_number}` : ' the doctor\'s room'}.
             </div>
           )}
         </div>
